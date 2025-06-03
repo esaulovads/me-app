@@ -169,6 +169,22 @@ brew services stop postgresql@14
 }
 ```
 
+### PUT /profiles/gender
+Обновление пола пользователя.
+
+Заголовки:
+```
+user-id: string
+Content-Type: application/json
+```
+
+Тело запроса:
+```json
+{
+  "gender": "MALE | FEMALE | NOT_SPECIFIED"
+}
+```
+
 ## Ожидаемые ответы
 
 ### GET /profiles
@@ -325,5 +341,21 @@ Content-Type: application/json
 ```json
 {
   "goal": "GAIN_WEIGHT | MAINTAIN_WEIGHT | LOSE_WEIGHT"
+}
+```
+
+### PUT /profiles/gender
+Обновление пола пользователя.
+
+Заголовки:
+```
+user-id: string
+Content-Type: application/json
+```
+
+Тело запроса:
+```json
+{
+  "gender": "MALE | FEMALE | NOT_SPECIFIED"
 }
 ``` 
