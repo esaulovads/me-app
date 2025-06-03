@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 
 // Enum для целей пользователя
 export enum UserGoal {
@@ -49,6 +49,9 @@ export class Profile {
   })
   gender: Gender;
 
+  @Column('float', { nullable: true })
+  bmi: number;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -58,5 +61,22 @@ export class Profile {
   // Метод для проверки заполненности профиля
   isComplete(): boolean {
     return !!(this.name && this.age && this.height && this.weight && this.goal);
+  }
+
+  // Метод для расчета ИМТ
+  calculateBMI(): number | null {
+    if (!this.height || !this.weight) {
+      return null;
+    }
+    // Переводим рост из см в метры
+    const heightInMeters = this.height / 100;
+    return Number((this.weight / (heightInMeters * heightInMeters)).toFixed(2));
+  }
+
+  // Автоматический расчет ИМТ перед сохранением или обновлением
+  @BeforeInsert()
+  @BeforeUpdate()
+  updateBMI() {
+    this.bmi = this.calculateBMI();
   }
 } 
