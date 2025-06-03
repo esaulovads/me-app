@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
-import { AddBMIField1710901234567 } from '../migrations/1710901234567-AddBMIField';
+import { AddBMIStatus1710901234568 } from '../migrations/1710901234568-AddBMIStatus';
 
 export default new DataSource({
   type: 'postgres',
@@ -10,6 +10,6 @@ export default new DataSource({
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'fitness_profiles',
   entities: [Profile],
-  migrations: [AddBMIField1710901234567],
+  migrations: [AddBMIStatus1710901234568],
   synchronize: false,
 }); 
