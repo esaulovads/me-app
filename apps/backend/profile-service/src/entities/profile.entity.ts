@@ -7,6 +7,13 @@ export enum UserGoal {
   LOSE_WEIGHT = 'LOSE_WEIGHT',
 }
 
+// Enum для пола пользователя
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  NOT_SPECIFIED = 'NOT_SPECIFIED',
+}
+
 @Entity('profiles')
 export class Profile {
   @PrimaryGeneratedColumn('uuid')
@@ -34,6 +41,13 @@ export class Profile {
     nullable: true
   })
   goal: UserGoal;
+
+  @Column({
+    type: 'enum',
+    enum: Gender,
+    default: Gender.NOT_SPECIFIED
+  })
+  gender: Gender;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

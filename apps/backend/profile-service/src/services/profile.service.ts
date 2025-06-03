@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
-import { UpdateNameDto, UpdateAgeDto, UpdateHeightDto, UpdateWeightDto, UpdateGoalDto } from '../dto/update-profile.dto';
+import { UpdateNameDto, UpdateAgeDto, UpdateHeightDto, UpdateWeightDto, UpdateGoalDto, UpdateGenderDto } from '../dto/update-profile.dto';
 
 @Injectable()
 export class ProfileService {
@@ -77,6 +77,16 @@ export class ProfileService {
       profile = await this.initializeProfile(userId);
     }
     profile.goal = updateGoalDto.goal;
+    return await this.profileRepository.save(profile);
+  }
+
+  // Обновление пола пользователя
+  async updateGender(userId: string, updateGenderDto: UpdateGenderDto): Promise<Profile> {
+    let profile = await this.profileRepository.findOne({ where: { userId } });
+    if (!profile) {
+      profile = await this.initializeProfile(userId);
+    }
+    profile.gender = updateGenderDto.gender;
     return await this.profileRepository.save(profile);
   }
 
