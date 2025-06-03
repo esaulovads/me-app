@@ -14,6 +14,14 @@ export enum Gender {
   NOT_SPECIFIED = 'NOT_SPECIFIED',
 }
 
+// Enum для статуса ИМТ
+export enum BMIStatus {
+  UNDERWEIGHT = 'UNDERWEIGHT',
+  NORMAL = 'NORMAL',
+  OVERWEIGHT = 'OVERWEIGHT',
+  OBESE = 'OBESE'
+}
+
 @Entity('profiles')
 export class Profile {
   @PrimaryGeneratedColumn('uuid')
@@ -52,6 +60,13 @@ export class Profile {
   @Column('float', { nullable: true })
   bmi: number;
 
+  @Column({
+    type: 'enum',
+    enum: BMIStatus,
+    nullable: true
+  })
+  bmiStatus: BMIStatus;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -61,6 +76,16 @@ export class Profile {
   // Метод для проверки заполненности профиля
   isComplete(): boolean {
     return !!(this.name && this.age && this.height && this.weight && this.goal);
+  }
+
+  // Метод для определения статуса ИМТ
+  calculateBMIStatus(bmi: number | null): BMIStatus | null {
+    if (bmi === null) return null;
+    
+    if (bmi < 18.5) return BMIStatus.UNDERWEIGHT;
+    if (bmi >= 18.5 && bmi < 25) return BMIStatus.NORMAL;
+    if (bmi >= 25 && bmi < 30) return BMIStatus.OVERWEIGHT;
+    return BMIStatus.OBESE;
   }
 
   // Метод для расчета ИМТ
@@ -73,10 +98,11 @@ export class Profile {
     return Number((this.weight / (heightInMeters * heightInMeters)).toFixed(2));
   }
 
-  // Автоматический расчет ИМТ перед сохранением или обновлением
+  // Автоматический расчет ИМТ и его статуса перед сохранением или обновлением
   @BeforeInsert()
   @BeforeUpdate()
-  updateBMI() {
+  updateBMIAndStatus() {
     this.bmi = this.calculateBMI();
+    this.bmiStatus = this.calculateBMIStatus(this.bmi);
   }
 } 
