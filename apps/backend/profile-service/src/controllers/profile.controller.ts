@@ -1,6 +1,14 @@
 import { Controller, Get, Put, Body, Headers, UnauthorizedException } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
-import { UpdateNameDto, UpdateAgeDto, UpdateHeightDto, UpdateWeightDto, UpdateGoalDto, UpdateGenderDto } from '../dto/update-profile.dto';
+import { 
+  UpdateNameDto, 
+  UpdateAgeDto, 
+  UpdateHeightDto, 
+  UpdateWeightDto, 
+  UpdateGoalDto, 
+  UpdateGenderDto,
+  UpdateActivityLevelDto 
+} from '../dto/update-profile.dto';
 import { Profile } from '../entities/profile.entity';
 
 @Controller('profiles')
@@ -88,5 +96,16 @@ export class ProfileController {
       throw new UnauthorizedException('Требуется авторизация');
     }
     return this.profileService.updateGender(userId, updateGenderDto);
+  }
+
+  @Put('activity-level')
+  async updateActivityLevel(
+    @Headers('user-id') userId: string,
+    @Body() updateActivityLevelDto: UpdateActivityLevelDto,
+  ): Promise<Profile> {
+    if (!userId) {
+      throw new UnauthorizedException('Требуется авторизация');
+    }
+    return this.profileService.updateActivityLevel(userId, updateActivityLevelDto);
   }
 } 

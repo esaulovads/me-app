@@ -2,7 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
-import { UpdateNameDto, UpdateAgeDto, UpdateHeightDto, UpdateWeightDto, UpdateGoalDto, UpdateGenderDto } from '../dto/update-profile.dto';
+import { 
+  UpdateNameDto, 
+  UpdateAgeDto, 
+  UpdateHeightDto, 
+  UpdateWeightDto, 
+  UpdateGoalDto, 
+  UpdateGenderDto,
+  UpdateActivityLevelDto 
+} from '../dto/update-profile.dto';
 
 @Injectable()
 export class ProfileService {
@@ -47,6 +55,7 @@ export class ProfileService {
       profile = await this.initializeProfile(userId);
     }
     profile.age = updateAgeDto.age;
+    // Сохраняем профиль - это автоматически пересчитает BMR и TDEE
     return await this.profileRepository.save(profile);
   }
 
@@ -57,6 +66,7 @@ export class ProfileService {
       profile = await this.initializeProfile(userId);
     }
     profile.height = updateHeightDto.height;
+    // Сохраняем профиль - это автоматически пересчитает BMI, BMR и TDEE
     return await this.profileRepository.save(profile);
   }
 
@@ -67,6 +77,7 @@ export class ProfileService {
       profile = await this.initializeProfile(userId);
     }
     profile.weight = updateWeightDto.weight;
+    // Сохраняем профиль - это автоматически пересчитает BMI, BMR и TDEE
     return await this.profileRepository.save(profile);
   }
 
@@ -87,6 +98,18 @@ export class ProfileService {
       profile = await this.initializeProfile(userId);
     }
     profile.gender = updateGenderDto.gender;
+    // Сохраняем профиль - это автоматически пересчитает BMR и TDEE
+    return await this.profileRepository.save(profile);
+  }
+
+  // Обновление уровня активности пользователя
+  async updateActivityLevel(userId: string, updateActivityLevelDto: UpdateActivityLevelDto): Promise<Profile> {
+    let profile = await this.profileRepository.findOne({ where: { userId } });
+    if (!profile) {
+      profile = await this.initializeProfile(userId);
+    }
+    profile.activityLevel = updateActivityLevelDto.activityLevel;
+    // Сохраняем профиль - это автоматически пересчитает TDEE
     return await this.profileRepository.save(profile);
   }
 
