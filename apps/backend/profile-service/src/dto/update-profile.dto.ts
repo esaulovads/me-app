@@ -1,5 +1,5 @@
 import { IsString, IsNumber, IsEnum, Min, Max } from 'class-validator';
-import { UserGoal, Gender } from '../entities/profile.entity';
+import { UserGoal, Gender, ActivityLevel } from '../entities/profile.entity';
 
 export class UpdateNameDto {
   @IsString()
@@ -35,4 +35,9 @@ export class UpdateGoalDto {
 export class UpdateGenderDto {
   @IsEnum(Gender)
   gender: Gender;
+}
+
+export class UpdateActivityLevelDto {
+  @IsEnum(ActivityLevel)
+  activityLevel: ActivityLevel;
 } 

@@ -11,6 +11,9 @@
 - Хранение целей пользователя (набор/поддержание/снижение веса)
 - Обновление данных профиля
 - Проверка заполненности профиля
+- Расчет базового метаболизма (BMR) по формуле Миффлина-Джеора
+- Расчет общего расхода энергии (TDEE) с учетом уровня активности
+- Управление уровнем физической активности пользователя
 
 ## Технический стек
 
@@ -187,6 +190,29 @@ Content-Type: application/json
 }
 ```
 
+### PUT /profiles/activity-level
+Обновление уровня физической активности пользователя.
+
+Заголовки:
+```
+user-id: string
+Content-Type: application/json
+```
+
+Тело запроса:
+```json
+{
+  "activityLevel": "SEDENTARY | LIGHTLY_ACTIVE | MODERATELY_ACTIVE | VERY_ACTIVE | EXTREMELY_ACTIVE"
+}
+```
+
+Уровни активности и их коэффициенты:
+- SEDENTARY (сидячий образ жизни) - 1.2
+- LIGHTLY_ACTIVE (легкая активность) - 1.375
+- MODERATELY_ACTIVE (умеренная активность) - 1.55
+- VERY_ACTIVE (высокая активность) - 1.725
+- EXTREMELY_ACTIVE (очень высокая активность) - 1.9
+
 ## Ожидаемые ответы
 
 ### GET /profiles
@@ -203,6 +229,10 @@ Content-Type: application/json
   "bmi": 23.15,
   "bmiStatus": "NORMAL",
   "goal": "MAINTAIN_WEIGHT",
+  "gender": "MALE",
+  "activityLevel": "MODERATELY_ACTIVE",
+  "bmr": 1745.5,
+  "tdee": 2705.5,
   "createdAt": "2024-01-01T00:00:00.000Z",
   "updatedAt": "2024-01-01T00:00:00.000Z"
 }
