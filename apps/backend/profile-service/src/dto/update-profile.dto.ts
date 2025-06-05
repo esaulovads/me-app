@@ -1,16 +1,16 @@
-import { IsString, IsNumber, IsEnum, Min, Max } from 'class-validator';
+import { IsString, IsNumber, IsEnum, Min, Max, IsDate } from 'class-validator';
 import { UserGoal, Gender, ActivityLevel } from '../entities/profile.entity';
+import { Type } from 'class-transformer';
 
 export class UpdateNameDto {
   @IsString()
   name: string;
 }
 
-export class UpdateAgeDto {
-  @IsNumber()
-  @Min(12) // Минимальный возраст
-  @Max(100) // Максимальный возраст
-  age: number;
+export class UpdateBirthDateDto {
+  @Type(() => Date)
+  @IsDate()
+  birthDate: Date;
 }
 
 export class UpdateHeightDto {

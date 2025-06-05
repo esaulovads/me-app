@@ -118,6 +118,9 @@ export class Profile {
   @Column({ nullable: true })
   name: string;
 
+  @Column({ type: 'date', nullable: true })
+  birthDate: Date;
+
   @Column('int', { nullable: true })
   age: number;
 
@@ -183,7 +186,7 @@ export class Profile {
   isComplete(): boolean {
     return !!(
       this.name && 
-      this.age && 
+      this.birthDate && 
       this.height && 
       this.weight && 
       this.goal &&
@@ -213,18 +216,25 @@ export class Profile {
 
   // Расчет базового метаболизма (BMR)
   calculateBMR(): number | null {
-    if (!this.weight || !this.height || !this.age || this.gender === Gender.NOT_SPECIFIED) {
+    if (!this.weight || !this.height || !this.birthDate || this.gender === Gender.NOT_SPECIFIED) {
       return null;
     }
 
+    // Рассчитываем возраст на основе даты рождения
+    const today = new Date();
+    const birthDate = typeof this.birthDate === 'string' ? new Date(this.birthDate) : this.birthDate;
+    const age = today.getFullYear() - birthDate.getFullYear();
+
     // Формула Миффлина-Джеора
-    const baseBMR = 10 * this.weight + 6.25 * this.height - 5 * this.age;
+    const baseBMR = 10 * this.weight + 6.25 * this.height - 5 * age;
     
-    return Math.round(
+    const result = Math.round(
       this.gender === Gender.MALE 
         ? baseBMR + 5 
         : baseBMR - 161
     );
+
+    return result;
   }
 
   // Получение коэффициента активности
