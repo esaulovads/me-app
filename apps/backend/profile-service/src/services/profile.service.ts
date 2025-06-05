@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
 import { 
   UpdateNameDto, 
-  UpdateAgeDto, 
+  UpdateBirthDateDto,
   UpdateHeightDto, 
   UpdateWeightDto, 
   UpdateGoalDto, 
@@ -48,14 +48,14 @@ export class ProfileService {
     return await this.profileRepository.save(profile);
   }
 
-  // Обновление возраста пользователя
-  async updateAge(userId: string, updateAgeDto: UpdateAgeDto): Promise<Profile> {
+  // Обновление даты рождения пользователя
+  async updateBirthDate(userId: string, updateBirthDateDto: UpdateBirthDateDto): Promise<Profile> {
     let profile = await this.profileRepository.findOne({ where: { userId } });
     if (!profile) {
       profile = await this.initializeProfile(userId);
     }
-    profile.age = updateAgeDto.age;
-    // Сохраняем профиль - это автоматически пересчитает BMR и TDEE
+    profile.birthDate = updateBirthDateDto.birthDate;
+    // Сохраняем профиль - это автоматически пересчитает age, BMR и TDEE через триггер
     return await this.profileRepository.save(profile);
   }
 

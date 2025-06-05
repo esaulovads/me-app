@@ -118,17 +118,17 @@ brew services stop postgresql@14
 }
 ```
 
-### Обновление возраста (PUT /profiles/age)
+### Обновление даты рождения (PUT /profiles/birth-date)
 
 - Метод: PUT
-- URL: http://localhost:3001/profiles/age
+- URL: http://localhost:3001/profiles/birth-date
 - Headers: 
   - Content-Type: application/json
   - user-id: test-user-123
 - Body (raw JSON):
 ```json
 {
-  "age": 25
+  "birthDate": "2000-01-11"
 }
 ```
 
@@ -324,8 +324,8 @@ Content-Type: application/json
 }
 ```
 
-### PUT /profiles/age
-Обновление возраста пользователя.
+### PUT /profiles/birth-date
+Обновление даты рождения пользователя. Возраст будет рассчитан автоматически.
 
 Заголовки:
 ```
@@ -336,7 +336,7 @@ Content-Type: application/json
 Тело запроса:
 ```json
 {
-  "age": "number"
+  "birthDate": "2000-01-11"
 }
 ```
 

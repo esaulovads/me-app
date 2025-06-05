@@ -2,7 +2,7 @@ import { Controller, Get, Put, Body, Headers, UnauthorizedException } from '@nes
 import { ProfileService } from '../services/profile.service';
 import { 
   UpdateNameDto, 
-  UpdateAgeDto, 
+  UpdateBirthDateDto,
   UpdateHeightDto, 
   UpdateWeightDto, 
   UpdateGoalDto, 
@@ -43,15 +43,15 @@ export class ProfileController {
     return this.profileService.updateName(userId, updateNameDto);
   }
 
-  @Put('age')
-  async updateAge(
+  @Put('birth-date')
+  async updateBirthDate(
     @Headers('user-id') userId: string,
-    @Body() updateAgeDto: UpdateAgeDto,
+    @Body() updateBirthDateDto: UpdateBirthDateDto,
   ): Promise<Profile> {
     if (!userId) {
       throw new UnauthorizedException('Требуется авторизация');
     }
-    return this.profileService.updateAge(userId, updateAgeDto);
+    return this.profileService.updateBirthDate(userId, updateBirthDateDto);
   }
 
   @Put('height')
