@@ -115,7 +115,10 @@ export class ProfileService {
 
   // Проверка заполненности профиля
   async isProfileComplete(userId: string): Promise<boolean> {
-    const profile = await this.getProfile(userId);
+    let profile = await this.profileRepository.findOne({ where: { userId } });
+    if (!profile) {
+      profile = await this.initializeProfile(userId);
+    }
     return profile.isComplete();
   }
 } 
