@@ -11,7 +11,6 @@ enum UserGoal {
 enum Gender {
   male,
   female,
-  notSpecified,
 }
 
 // Enum для уровня физической активности

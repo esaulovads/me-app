@@ -10,8 +10,7 @@ export enum UserGoal {
 // Enum для пола пользователя
 export enum Gender {
   MALE = 'MALE',
-  FEMALE = 'FEMALE',
-  NOT_SPECIFIED = 'NOT_SPECIFIED',
+  FEMALE = 'FEMALE'
 }
 
 // Enum для статуса ИМТ
@@ -140,7 +139,7 @@ export class Profile {
   @Column({
     type: 'enum',
     enum: Gender,
-    default: Gender.NOT_SPECIFIED
+    nullable: true
   })
   gender: Gender;
 
@@ -190,6 +189,7 @@ export class Profile {
       this.height && 
       this.weight && 
       this.goal &&
+      this.gender &&
       this.activityLevel
     );
   }
@@ -216,7 +216,7 @@ export class Profile {
 
   // Расчет базового метаболизма (BMR)
   calculateBMR(): number | null {
-    if (!this.weight || !this.height || !this.birthDate || this.gender === Gender.NOT_SPECIFIED) {
+    if (!this.weight || !this.height || !this.birthDate || !this.gender) {
       return null;
     }
 
