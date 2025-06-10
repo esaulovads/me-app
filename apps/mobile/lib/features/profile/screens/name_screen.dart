@@ -57,7 +57,11 @@ class _NameScreenState extends State<NameScreen> {
         ],
       ),
       onNext: _isValid 
-        ? () { widget.onNameSubmitted(_controller.text.trim()); }
+        ? () { 
+            // Скрываем клавиатуру перед переходом
+            FocusScope.of(context).unfocus();
+            widget.onNameSubmitted(_controller.text.trim()); 
+          }
         : null,
     );
   }

@@ -6,7 +6,7 @@ export class CreateProfilesTable1710901234570 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         // Создаем enum типы
         await queryRunner.query(`CREATE TYPE "public"."profiles_goal_enum" AS ENUM('GAIN_WEIGHT', 'MAINTAIN_WEIGHT', 'LOSE_WEIGHT')`);
-        await queryRunner.query(`CREATE TYPE "public"."profiles_gender_enum" AS ENUM('MALE', 'FEMALE', 'NOT_SPECIFIED')`);
+        await queryRunner.query(`CREATE TYPE "public"."profiles_gender_enum" AS ENUM('MALE', 'FEMALE')`);
         await queryRunner.query(`CREATE TYPE "public"."profiles_bmistatus_enum" AS ENUM('UNDERWEIGHT', 'NORMAL', 'OVERWEIGHT', 'OBESE')`);
         await queryRunner.query(`CREATE TYPE "public"."profiles_activitylevel_enum" AS ENUM('SEDENTARY', 'LIGHTLY_ACTIVE', 'MODERATELY_ACTIVE', 'VERY_ACTIVE', 'EXTREMELY_ACTIVE')`);
 
@@ -20,7 +20,7 @@ export class CreateProfilesTable1710901234570 implements MigrationInterface {
                 "height" double precision,
                 "weight" double precision,
                 "goal" "public"."profiles_goal_enum",
-                "gender" "public"."profiles_gender_enum" NOT NULL DEFAULT 'NOT_SPECIFIED',
+                "gender" "public"."profiles_gender_enum",
                 "bmi" double precision,
                 "bmiStatus" "public"."profiles_bmistatus_enum",
                 "activityLevel" "public"."profiles_activitylevel_enum",

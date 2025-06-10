@@ -31,12 +31,6 @@ class GenderScreen extends StatelessWidget {
             isSelected: initialGender == Gender.female,
             onTap: () => onGenderSelected(Gender.female),
           ),
-          const SizedBox(height: 16),
-          _GenderButton(
-            title: 'Не определен',
-            isSelected: initialGender == Gender.notSpecified,
-            onTap: () => onGenderSelected(Gender.notSpecified),
-          ),
         ],
       ),
       onNext: initialGender != null 

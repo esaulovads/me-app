@@ -186,7 +186,7 @@ Content-Type: application/json
 Тело запроса:
 ```json
 {
-  "gender": "MALE | FEMALE | NOT_SPECIFIED"
+  "gender": "MALE | FEMALE"
 }
 ```
 
@@ -400,6 +400,6 @@ Content-Type: application/json
 Тело запроса:
 ```json
 {
-  "gender": "MALE | FEMALE | NOT_SPECIFIED"
+  "gender": "MALE | FEMALE"
 }
 ``` 

@@ -31,7 +31,7 @@ class ProfileService {
           birthDate: data['birthDate'] != null ? DateTime.parse(data['birthDate']) : null,
           gender: data['gender'] != null ? Gender.values.firstWhere(
             (e) => e.toString().split('.').last == data['gender'],
-            orElse: () => Gender.notSpecified,
+            orElse: () => Gender.male,
           ) : null,
           height: data['height']?.toDouble(),
           weight: data['weight']?.toDouble(),
