@@ -95,6 +95,7 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
       ),
       onNext: _isValid 
         ? () { 
+            FocusScope.of(context).unfocus();
             widget.onMeasurementsSubmitted(
               double.parse(_heightController.text),
               double.parse(_weightController.text)

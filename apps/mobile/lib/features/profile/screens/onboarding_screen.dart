@@ -164,6 +164,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _updateProfile(() => _profileService.updateGoal(goal));
                 },
                 onBack: _previousPage,
+                height: _profile.height,
+                weight: _profile.weight,
               ),
               ActivityLevelScreen(
                 initialLevel: _profile.activityLevel,
