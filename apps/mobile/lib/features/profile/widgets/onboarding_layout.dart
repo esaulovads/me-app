@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'onboarding_button.dart';
+import 'onboarding_progress.dart';
 
 // Общий layout для всех экранов онбординга
 class OnboardingLayout extends StatelessWidget {
@@ -9,6 +10,8 @@ class OnboardingLayout extends StatelessWidget {
   final VoidCallback? onBack;
   final String nextButtonText;
   final bool isLastStep;
+  final int currentStep;
+  final int totalSteps;
 
   const OnboardingLayout({
     Key? key,
@@ -18,6 +21,8 @@ class OnboardingLayout extends StatelessWidget {
     this.onBack,
     this.nextButtonText = 'Далее',
     this.isLastStep = false,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   @override
@@ -29,6 +34,11 @@ class OnboardingLayout extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              OnboardingProgress(
+                currentStep: currentStep,
+                totalSteps: totalSteps,
+              ),
+              const SizedBox(height: 32),
               Text(
                 title,
                 style: const TextStyle(

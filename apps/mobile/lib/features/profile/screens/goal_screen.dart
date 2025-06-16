@@ -8,6 +8,8 @@ class GoalScreen extends StatelessWidget {
   final VoidCallback onBack;
   final double? height; // в сантиметрах
   final double? weight; // в килограммах
+  final int currentStep;
+  final int totalSteps;
 
   const GoalScreen({
     Key? key,
@@ -16,6 +18,8 @@ class GoalScreen extends StatelessWidget {
     required this.onBack,
     this.height,
     this.weight,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   // Расчет ИМТ
@@ -39,6 +43,8 @@ class GoalScreen extends StatelessWidget {
 
     return OnboardingLayout(
       title: 'Какая у вас цель?',
+      currentStep: currentStep,
+      totalSteps: totalSteps,
       child: Column(
         children: [
           _GoalButton(

@@ -4,11 +4,15 @@ import '../widgets/onboarding_layout.dart';
 class NameScreen extends StatefulWidget {
   final String? initialName;
   final Function(String) onNameSubmitted;
+  final int currentStep;
+  final int totalSteps;
   
   const NameScreen({
     Key? key,
     this.initialName,
     required this.onNameSubmitted,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   @override
@@ -43,6 +47,8 @@ class _NameScreenState extends State<NameScreen> {
   Widget build(BuildContext context) {
     return OnboardingLayout(
       title: 'Как вас зовут?',
+      currentStep: widget.currentStep,
+      totalSteps: widget.totalSteps,
       child: Column(
         children: [
           TextField(

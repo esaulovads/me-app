@@ -7,6 +7,8 @@ class MeasurementsScreen extends StatefulWidget {
   final double? initialWeight;
   final Function(double height, double weight) onMeasurementsSubmitted;
   final VoidCallback onBack;
+  final int currentStep;
+  final int totalSteps;
 
   const MeasurementsScreen({
     Key? key,
@@ -14,6 +16,8 @@ class MeasurementsScreen extends StatefulWidget {
     this.initialWeight,
     required this.onMeasurementsSubmitted,
     required this.onBack,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   @override
@@ -64,6 +68,8 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
   Widget build(BuildContext context) {
     return OnboardingLayout(
       title: 'Укажите ваши параметры',
+      currentStep: widget.currentStep,
+      totalSteps: widget.totalSteps,
       child: Column(
         children: [
           TextField(

@@ -5,12 +5,16 @@ class BirthDateScreen extends StatefulWidget {
   final DateTime? initialDate;
   final Function(DateTime) onDateSelected;
   final VoidCallback onBack;
+  final int currentStep;
+  final int totalSteps;
 
   const BirthDateScreen({
     Key? key,
     this.initialDate,
     required this.onDateSelected,
     required this.onBack,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   @override
@@ -50,6 +54,8 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
   Widget build(BuildContext context) {
     return OnboardingLayout(
       title: 'Когда вы родились?',
+      currentStep: widget.currentStep,
+      totalSteps: widget.totalSteps,
       child: Column(
         children: [
           InkWell(
