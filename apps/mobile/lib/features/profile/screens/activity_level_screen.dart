@@ -6,18 +6,24 @@ class ActivityLevelScreen extends StatelessWidget {
   final ActivityLevel? initialLevel;
   final Function(ActivityLevel) onLevelSelected;
   final VoidCallback onBack;
+  final int currentStep;
+  final int totalSteps;
 
   const ActivityLevelScreen({
     Key? key,
     this.initialLevel,
     required this.onLevelSelected,
     required this.onBack,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return OnboardingLayout(
       title: 'Ваш уровень активности',
+      currentStep: currentStep,
+      totalSteps: totalSteps,
       child: SingleChildScrollView(
         child: Column(
           children: [

@@ -29,6 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late Profile _profile;
   int _currentPage = 0;
   bool _isLoading = false;
+  static const int _totalSteps = 6;
 
   @override
   void initState() {
@@ -125,6 +126,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   setState(() => _profile = _profile.copyWith(name: name));
                   _updateProfile(() => _profileService.updateName(name));
                 },
+                currentStep: _currentPage,
+                totalSteps: _totalSteps,
               ),
               GenderScreen(
                 initialGender: _profile.gender,
@@ -133,6 +136,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _updateProfile(() => _profileService.updateGender(gender));
                 },
                 onBack: _previousPage,
+                currentStep: _currentPage,
+                totalSteps: _totalSteps,
               ),
               BirthDateScreen(
                 initialDate: _profile.birthDate,
@@ -141,6 +146,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _updateProfile(() => _profileService.updateBirthDate(date));
                 },
                 onBack: _previousPage,
+                currentStep: _currentPage,
+                totalSteps: _totalSteps,
               ),
               MeasurementsScreen(
                 initialHeight: _profile.height,
@@ -156,6 +163,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   });
                 },
                 onBack: _previousPage,
+                currentStep: _currentPage,
+                totalSteps: _totalSteps,
               ),
               GoalScreen(
                 initialGoal: _profile.goal,
@@ -166,6 +175,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onBack: _previousPage,
                 height: _profile.height,
                 weight: _profile.weight,
+                currentStep: _currentPage,
+                totalSteps: _totalSteps,
               ),
               ActivityLevelScreen(
                 initialLevel: _profile.activityLevel,
@@ -174,6 +185,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _updateProfile(() => _profileService.updateActivityLevel(level));
                 },
                 onBack: _previousPage,
+                currentStep: _currentPage,
+                totalSteps: _totalSteps,
               ),
             ],
           ),

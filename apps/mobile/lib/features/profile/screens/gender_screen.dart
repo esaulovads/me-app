@@ -6,18 +6,24 @@ class GenderScreen extends StatelessWidget {
   final Gender? initialGender;
   final Function(Gender) onGenderSelected;
   final VoidCallback onBack;
+  final int currentStep;
+  final int totalSteps;
 
   const GenderScreen({
     Key? key,
     this.initialGender,
     required this.onGenderSelected,
     required this.onBack,
+    required this.currentStep,
+    required this.totalSteps,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return OnboardingLayout(
       title: 'Укажите ваш пол',
+      currentStep: currentStep,
+      totalSteps: totalSteps,
       child: Column(
         children: [
           _GenderButton(
