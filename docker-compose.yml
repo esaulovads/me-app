@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: me-app-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - me-app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:6-jammy
+    container_name: me-app-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongodb
+      MONGO_INITDB_ROOT_PASSWORD: mongodb
+      MONGO_INITDB_DATABASE: auth_db
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - me-app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./apps/backend/auth-service
+      dockerfile: Dockerfile
+    container_name: me-app-auth
+    env_file:
+      - ./apps/backend/auth-service/.env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:mongodb@mongodb:27017/auth_db?authSource=admin
+      - JWT_SECRET=your_jwt_secret_key
+      - JWT_EXPIRES_IN=1d
+      - PORT=3000
+    ports:
+      - "${AUTH_SERVICE_PORT:-3000}:3000"
+    networks:
+      - me-app-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  profile-service:
+    build:
+      context: ./apps/backend/profile-service
+      dockerfile: Dockerfile
+    container_name: me-app-profile
+    env_file:
+      - ./apps/backend/profile-service/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=fitness_profiles
+    ports:
+      - "${PROFILE_SERVICE_PORT:-3001}:3001"
+    networks:
+      - me-app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  me-app-network:
+    name: me-app-network
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongodb_data: 
