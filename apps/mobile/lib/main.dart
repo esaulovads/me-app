@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/profile/screens/onboarding_screen.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/profile/services/profile_service.dart';
-import 'features/nutrition/screens/nutrition_diary_screen.dart';
+import 'features/profile/screens/main_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -89,10 +89,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
       if (mounted) {
         // 3. Направляем пользователя на соответствующий экран
         if (isProfileComplete) {
-          // Если профиль заполнен - показываем дневник питания
+          // Если профиль заполнен - показываем основной экран
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => NutritionDiaryScreen(userId: userId),
+              builder: (context) => MainScreen(userId: userId),
             ),
           );
         } else {
