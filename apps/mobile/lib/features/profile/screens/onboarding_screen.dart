@@ -7,7 +7,7 @@ import 'birth_date_screen.dart';
 import 'measurements_screen.dart';
 import 'goal_screen.dart';
 import 'activity_level_screen.dart';
-import '../../nutrition/screens/nutrition_diary_screen.dart';
+import 'main_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final String userId;
@@ -68,12 +68,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      // Переходим на экран дневника питания
+      // Переходим на основной экран
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => NutritionDiaryScreen(userId: widget.userId),
+            builder: (context) => MainScreen(userId: widget.userId),
           ),
         );
       }
