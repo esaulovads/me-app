@@ -31,6 +31,7 @@ class Profile {
   final double? weight;
   final UserGoal? goal;
   final ActivityLevel? activityLevel;
+  final double? tdee; // Общий расход энергии (дневная норма калорий)
 
   Profile({
     this.name,
@@ -40,6 +41,7 @@ class Profile {
     this.weight,
     this.goal,
     this.activityLevel,
+    this.tdee,
   });
 
   // Метод для создания копии объекта с новыми значениями
@@ -51,6 +53,7 @@ class Profile {
     double? weight,
     UserGoal? goal,
     ActivityLevel? activityLevel,
+    double? tdee,
   }) {
     return Profile(
       name: name ?? this.name,
@@ -60,6 +63,7 @@ class Profile {
       weight: weight ?? this.weight,
       goal: goal ?? this.goal,
       activityLevel: activityLevel ?? this.activityLevel,
+      tdee: tdee ?? this.tdee,
     );
   }
 } 

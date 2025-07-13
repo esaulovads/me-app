@@ -43,6 +43,7 @@ class ProfileService {
             (e) => e.toString().split('.').last == data['activityLevel'],
             orElse: () => ActivityLevel.MODERATELY_ACTIVE,
           ) : null,
+          tdee: data['tdee']?.toDouble(),
         );
       } else {
         throw Exception('Failed to load profile: ${response.body}');
