@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/profile_model.dart';
 import '../services/profile_service.dart';
 import 'edit_profile_screen.dart';
+import '../../nutrition/widgets/nutrition_progress_bar.dart';
+import '../../nutrition/services/nutrition_service.dart';
+import '../../nutrition/models/meal_model.dart';
+import '../../nutrition/nutrition_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String userId;
@@ -18,19 +22,28 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   late final ProfileService _profileService;
+  late final NutritionService _nutritionService;
   final _profileController = StreamController<Profile>();
   bool _isLoading = false;
+  DailySummary? _dailySummary;
+  
+  // Debounce для предотвращения частых обновлений
+  Timer? _nutritionUpdateTimer;
 
   @override
   void initState() {
     super.initState();
     _profileService = ProfileService(userId: widget.userId);
+    _nutritionService = NutritionService(userId: widget.userId);
     _loadProfile();
+    _loadNutritionData();
   }
 
   @override
   void dispose() {
     _profileController.close();
+    _nutritionService.dispose(); // Освобождаем ресурсы nutrition service
+    _nutritionUpdateTimer?.cancel(); // Отменяем таймер обновления
     super.dispose();
   }
 
@@ -52,6 +65,31 @@ class _MainScreenState extends State<MainScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  // Загрузка данных питания за сегодня с debounce
+  Future<void> _loadNutritionData() async {
+    // Отменяем предыдущий таймер если он есть
+    _nutritionUpdateTimer?.cancel();
+    
+    _nutritionUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final summary = await _nutritionService.getTodaySummary();
+        if (mounted) {
+          setState(() => _dailySummary = summary);
+        }
+      } catch (e) {
+        // Обрабатываем ошибки тихо, используем пустую сводку как fallback
+        if (mounted) {
+          setState(() => _dailySummary = DailySummary(
+            totalCalories: 0,
+            totalProteins: 0,
+            totalFats: 0,
+            totalCarbs: 0,
+          ));
+        }
+      }
+    });
   }
 
   // Вычисляем возраст на основе даты рождения
@@ -151,6 +189,8 @@ class _MainScreenState extends State<MainScreen> {
                     );
                     if (result == true) {
                       _loadProfile();
+                      // Обновляем данные питания, так как TDEE могла измениться
+                      _loadNutritionData();
                     }
                   },
                   icon: const Icon(Icons.edit),
@@ -161,6 +201,27 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // Создание виджета прогресс-бара питания
+  Widget _buildNutritionProgressBar(Profile profile) {
+    final targetCalories = profile.tdee ?? 2000.0; // Используем TDEE или значение по умолчанию
+    final consumedCalories = _dailySummary?.totalCalories ?? 0.0;
+
+    return NutritionProgressBar(
+      consumedCalories: consumedCalories,
+      targetCalories: targetCalories,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NutritionScreen(userId: widget.userId),
+          ),
+        );
+        // Обновляем данные питания при возвращении
+        _loadNutritionData();
+      },
     );
   }
 
@@ -204,11 +265,14 @@ class _MainScreenState extends State<MainScreen> {
               SliverToBoxAdapter(
                 child: _buildProfileHeader(profile),
               ),
-              // Здесь будет остальной контент (дневник питания, активность и т.д.)
+              SliverToBoxAdapter(
+                child: _buildNutritionProgressBar(profile),
+              ),
+              // Здесь будет остальной контент (активность и т.д.)
               SliverFillRemaining(
                 child: Center(
                   child: Text(
-                    'Здесь будет основной контент',
+                    'Здесь будет остальной контент',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[600],
