@@ -203,7 +203,7 @@ Content-Type: application/json
 ```
 
 #### GET /meals
-Получение всех приемов пищи за день.
+Получение всех приемов пищи за конкретный день.
 
 Заголовки:
 ```
@@ -212,11 +212,43 @@ user-id: string
 
 Параметры запроса:
 ```
-date: YYYY-MM-DD
+date: YYYY-MM-DD (обязательный параметр)
+```
+
+Пример запроса:
+```
+GET /meals?date=2024-03-20
+```
+
+Ответ:
+```json
+[
+  {
+    "id": "meal-uuid",
+    "userId": "user-uuid",
+    "time": "2024-03-20T12:00:00Z",
+    "totalCalories": 450,
+    "totalProteins": 35,
+    "totalFats": 15,
+    "totalCarbs": 40,
+    "items": [
+      {
+        "id": "item-uuid",
+        "type": "PRODUCT",
+        "productId": "product-uuid",
+        "weight": 200,
+        "calories": 220,
+        "proteins": 23,
+        "fats": 1.5,
+        "carbs": 0
+      }
+    ]
+  }
+]
 ```
 
 #### GET /meals/summary
-Получение суммарного КБЖУ за день.
+Получение суммарного КБЖУ за конкретный день.
 
 Заголовки:
 ```
@@ -225,5 +257,20 @@ user-id: string
 
 Параметры запроса:
 ```
-date: YYYY-MM-DD
+date: YYYY-MM-DD (обязательный параметр)
+```
+
+Пример запроса:
+```
+GET /meals/summary?date=2024-03-20
+```
+
+Ответ:
+```json
+{
+  "totalCalories": 1850,
+  "totalProteins": 120,
+  "totalFats": 65,
+  "totalCarbs": 180
+}
 ``` 
