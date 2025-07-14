@@ -13,20 +13,32 @@ class ProfileService {
   }
 
   final String userId;
+  
+  // Кэш для профиля пользователя
+  static Profile? _cachedProfile;
+  static DateTime? _cacheTimestamp;
+  static const Duration _cacheExpiration = Duration(minutes: 5);
 
   ProfileService({required this.userId});
 
-  // Получение профиля
+  // Получение профиля с кэшированием
   Future<Profile> getProfile() async {
+    // Проверяем кэш
+    if (_cachedProfile != null && 
+        _cacheTimestamp != null && 
+        DateTime.now().difference(_cacheTimestamp!) < _cacheExpiration) {
+      return _cachedProfile!;
+    }
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/profiles'),
         headers: {'user-id': userId},
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return Profile(
+        final profile = Profile(
           name: data['name'],
           birthDate: data['birthDate'] != null ? DateTime.parse(data['birthDate']) : null,
           gender: data['gender'] != null ? Gender.values.firstWhere(
@@ -45,6 +57,12 @@ class ProfileService {
           ) : null,
           tdee: data['tdee']?.toDouble(),
         );
+        
+        // Кэшируем результат
+        _cachedProfile = profile;
+        _cacheTimestamp = DateTime.now();
+        
+        return profile;
       } else {
         throw Exception('Failed to load profile: ${response.body}');
       }
@@ -54,13 +72,18 @@ class ProfileService {
     }
   }
 
-  // Проверка заполненности профиля
+  // Проверка заполненности профиля с кэшированием
   Future<bool> isProfileComplete() async {
     try {
+      // Сначала пытаемся получить из кэша
+      if (_cachedProfile != null) {
+        return _isProfileComplete(_cachedProfile!);
+      }
+
       final response = await http.get(
         Uri.parse('$baseUrl/profiles/complete'),
         headers: {'user-id': userId},
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -70,6 +93,42 @@ class ProfileService {
       }
     } catch (e) {
       print('Error checking profile completion: $e');
+      rethrow;
+    }
+  }
+
+  // Локальная проверка заполненности профиля
+  bool _isProfileComplete(Profile profile) {
+    return profile.name != null && 
+           profile.name!.isNotEmpty &&
+           profile.gender != null &&
+           profile.birthDate != null &&
+           profile.height != null &&
+           profile.weight != null &&
+           profile.goal != null &&
+           profile.activityLevel != null;
+  }
+
+  // Батчевое обновление профиля
+  Future<void> updateProfileBatch(Map<String, dynamic> updates) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/profiles/batch'),
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': userId,
+        },
+        body: jsonEncode(updates),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        // Сбрасываем кэш после успешного обновления
+        _clearCache();
+      } else {
+        throw Exception('Failed to update profile: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating profile batch: $e');
       rethrow;
     }
   }
@@ -122,15 +181,28 @@ class ProfileService {
           'user-id': userId,
         },
         body: jsonEncode(data),
-      );
+      ).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 200) {
+        // Сбрасываем кэш после успешного обновления
+        _clearCache();
+      } else {
         throw Exception('Failed to update profile: ${response.body}');
       }
     } catch (e) {
-      // TODO: Добавить нормальную обработку ошибок
       print('Error updating profile: $e');
       rethrow;
     }
+  }
+
+  // Очистка кэша
+  static void _clearCache() {
+    _cachedProfile = null;
+    _cacheTimestamp = null;
+  }
+
+  // Принудительная очистка кэша (для использования извне)
+  void clearCache() {
+    _clearCache();
   }
 } 

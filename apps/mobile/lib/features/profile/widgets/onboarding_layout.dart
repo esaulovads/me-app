@@ -34,40 +34,57 @@ class OnboardingLayout extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OnboardingProgress(
-                currentStep: currentStep,
-                totalSteps: totalSteps,
-              ),
-              const SizedBox(height: 32),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              // Оптимизированный прогресс-бар
+              RepaintBoundary(
+                child: OnboardingProgress(
+                  currentStep: currentStep,
+                  totalSteps: totalSteps,
                 ),
               ),
               const SizedBox(height: 32),
-              Expanded(child: child),
+              
+              // Заголовок с оптимизацией
+              RepaintBoundary(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              
+              // Основной контент
+              Expanded(
+                child: RepaintBoundary(
+                  child: child,
+                ),
+              ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  if (onBack != null) ...[
+              
+              // Оптимизированные кнопки
+              RepaintBoundary(
+                child: Row(
+                  children: [
+                    if (onBack != null) ...[
+                      Expanded(
+                        child: OnboardingButton(
+                          text: 'Назад',
+                          onPressed: onBack!,
+                          isPrimary: false,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
                     Expanded(
                       child: OnboardingButton(
-                        text: 'Назад',
-                        onPressed: onBack!,
-                        isPrimary: false,
+                        text: nextButtonText,
+                        onPressed: onNext,
                       ),
                     ),
-                    const SizedBox(width: 16),
                   ],
-                  Expanded(
-                    child: OnboardingButton(
-                      text: nextButtonText,
-                      onPressed: onNext,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),

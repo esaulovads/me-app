@@ -12,19 +12,23 @@ class OnboardingProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        totalSteps,
-        (index) => Container(
-          width: 12,
-          height: 12,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: index <= currentStep
-                ? Theme.of(context).primaryColor
-                : Theme.of(context).primaryColor.withOpacity(0.2),
+    return RepaintBoundary(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          totalSteps,
+          (index) => RepaintBoundary(
+            child: Container(
+              width: 12,
+              height: 12,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: index <= currentStep
+                    ? Theme.of(context).primaryColor
+                    : Theme.of(context).primaryColor.withOpacity(0.2),
+              ),
+            ),
           ),
         ),
       ),
