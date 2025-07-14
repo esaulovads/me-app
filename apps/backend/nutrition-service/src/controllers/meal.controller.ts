@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Headers, Query, BadRequestException } from '@nestjs/common';
 import { MealService } from '../services/meal.service';
 import { CreateMealDto } from '../dto/create-meal.dto';
 import { Meal } from '../entities/meal.entity';
@@ -12,6 +12,9 @@ export class MealController {
     @Headers('user-id') userId: string,
     @Body() createMealDto: CreateMealDto,
   ): Promise<Meal> {
+    if (!userId) {
+      throw new BadRequestException('User ID заголовок обязателен');
+    }
     return this.mealService.create(userId, createMealDto);
   }
 
@@ -20,6 +23,12 @@ export class MealController {
     @Headers('user-id') userId: string,
     @Query('date') date: string,
   ): Promise<Meal[]> {
+    if (!userId) {
+      throw new BadRequestException('User ID заголовок обязателен');
+    }
+    if (!date) {
+      throw new BadRequestException('Параметр date обязателен');
+    }
     return this.mealService.findAllByUserIdAndDate(userId, date);
   }
 
@@ -33,6 +42,12 @@ export class MealController {
     totalFats: number;
     totalCarbs: number;
   }> {
+    if (!userId) {
+      throw new BadRequestException('User ID заголовок обязателен');
+    }
+    if (!date) {
+      throw new BadRequestException('Параметр date обязателен');
+    }
     return this.mealService.getDailySummary(userId, date);
   }
 
@@ -41,6 +56,9 @@ export class MealController {
     @Headers('user-id') userId: string,
     @Param('id') id: string,
   ): Promise<void> {
+    if (!userId) {
+      throw new BadRequestException('User ID заголовок обязателен');
+    }
     return this.mealService.delete(id, userId);
   }
 } 

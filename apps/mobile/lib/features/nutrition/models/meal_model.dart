@@ -4,6 +4,7 @@ class MealItem {
   final String type; // PRODUCT или DISH
   final String? productId;
   final String? dishId;
+  final String name; // Название продукта или блюда
   final double weight;
   final double calories;
   final double proteins;
@@ -15,6 +16,7 @@ class MealItem {
     required this.type,
     this.productId,
     this.dishId,
+    required this.name,
     required this.weight,
     required this.calories,
     required this.proteins,
@@ -29,12 +31,21 @@ class MealItem {
       type: json['type'],
       productId: json['productId'],
       dishId: json['dishId'],
-      weight: (json['weight'] as num).toDouble(),
-      calories: (json['calories'] as num).toDouble(),
-      proteins: (json['proteins'] as num).toDouble(),
-      fats: (json['fats'] as num).toDouble(),
-      carbs: (json['carbs'] as num).toDouble(),
+      name: json['name'] ?? 'Неизвестно',
+      weight: _parseDouble(json['weight']),
+      calories: _parseDouble(json['calories']),
+      proteins: _parseDouble(json['proteins']),
+      fats: _parseDouble(json['fats']),
+      carbs: _parseDouble(json['carbs']),
     );
+  }
+
+  // Безопасное преобразование в double
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 
   // Преобразование в JSON
@@ -44,6 +55,7 @@ class MealItem {
       'type': type,
       'productId': productId,
       'dishId': dishId,
+      'name': name,
       'weight': weight,
       'calories': calories,
       'proteins': proteins,
@@ -92,14 +104,22 @@ class Meal {
       userId: json['userId'],
       name: json['name'] ?? _getMealNameFromTime(DateTime.parse(json['time'])),
       time: DateTime.parse(json['time']),
-      totalCalories: (json['totalCalories'] as num).toDouble(),
-      totalProteins: (json['totalProteins'] as num).toDouble(),
-      totalFats: (json['totalFats'] as num).toDouble(),
-      totalCarbs: (json['totalCarbs'] as num).toDouble(),
+      totalCalories: _parseDouble(json['totalCalories']),
+      totalProteins: _parseDouble(json['totalProteins']),
+      totalFats: _parseDouble(json['totalFats']),
+      totalCarbs: _parseDouble(json['totalCarbs']),
       items: (json['items'] as List<dynamic>?)
           ?.map((item) => MealItem.fromJson(item))
           .toList() ?? [],
     );
+  }
+
+  // Безопасное преобразование в double
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 
   // Определение названия приёма пищи по времени
@@ -150,11 +170,19 @@ class DailySummary {
   // Создание объекта из JSON
   factory DailySummary.fromJson(Map<String, dynamic> json) {
     return DailySummary(
-      totalCalories: (json['totalCalories'] as num).toDouble(),
-      totalProteins: (json['totalProteins'] as num).toDouble(),
-      totalFats: (json['totalFats'] as num).toDouble(),
-      totalCarbs: (json['totalCarbs'] as num).toDouble(),
+      totalCalories: _parseDouble(json['totalCalories']),
+      totalProteins: _parseDouble(json['totalProteins']),
+      totalFats: _parseDouble(json['totalFats']),
+      totalCarbs: _parseDouble(json['totalCarbs']),
     );
+  }
+
+  // Безопасное преобразование в double
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 
   // Преобразование в JSON

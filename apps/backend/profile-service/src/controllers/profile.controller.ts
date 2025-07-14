@@ -32,6 +32,17 @@ export class ProfileController {
     return { isComplete };
   }
 
+  @Put('batch')
+  async updateProfileBatch(
+    @Headers('user-id') userId: string,
+    @Body() updates: Record<string, any>,
+  ): Promise<Profile> {
+    if (!userId) {
+      throw new UnauthorizedException('Требуется авторизация');
+    }
+    return this.profileService.updateProfileBatch(userId, updates);
+  }
+
   @Put('name')
   async updateName(
     @Headers('user-id') userId: string,

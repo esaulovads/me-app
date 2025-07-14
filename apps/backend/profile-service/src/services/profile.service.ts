@@ -38,6 +38,40 @@ export class ProfileService {
     return profile;
   }
 
+  // Батчевое обновление профиля
+  async updateProfileBatch(userId: string, updates: Record<string, any>): Promise<Profile> {
+    let profile = await this.profileRepository.findOne({ where: { userId } });
+    if (!profile) {
+      profile = await this.initializeProfile(userId);
+    }
+
+    // Применяем все обновления
+    if (updates.name !== undefined) {
+      profile.name = updates.name;
+    }
+    if (updates.birthDate !== undefined) {
+      profile.birthDate = new Date(updates.birthDate);
+    }
+    if (updates.gender !== undefined) {
+      profile.gender = updates.gender;
+    }
+    if (updates.height !== undefined) {
+      profile.height = updates.height;
+    }
+    if (updates.weight !== undefined) {
+      profile.weight = updates.weight;
+    }
+    if (updates.goal !== undefined) {
+      profile.goal = updates.goal;
+    }
+    if (updates.activityLevel !== undefined) {
+      profile.activityLevel = updates.activityLevel;
+    }
+
+    // Сохраняем профиль - это автоматически пересчитает все вычисляемые поля
+    return await this.profileRepository.save(profile);
+  }
+
   // Обновление имени пользователя
   async updateName(userId: string, updateNameDto: UpdateNameDto): Promise<Profile> {
     let profile = await this.profileRepository.findOne({ where: { userId } });
