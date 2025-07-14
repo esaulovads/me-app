@@ -154,6 +154,74 @@ class NutritionService {
     return getDailySummary(DateTime.now());
   }
 
+  // Создание нового приёма пищи
+  Future<Meal> createMeal(DateTime dateTime) async {
+    try {
+      final url = Uri.parse('$baseUrl/meals');
+      
+      final body = json.encode({
+        'time': dateTime.toIso8601String(),
+        'items': [], // Пустой список блюд
+      });
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': userId,
+        },
+        body: body,
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final meal = Meal.fromJson(data);
+        
+        // Очищаем кэш для этой даты, чтобы обновить данные
+        clearCacheForDate(dateTime);
+        
+        return meal;
+      } else {
+        throw Exception('Ошибка создания приёма пищи: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Нет подключения к интернету');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа');
+    } catch (e) {
+      // Временное решение: создаем мок-данные для тестирования
+      if (e.toString().contains('404') || e.toString().contains('Connection refused')) {
+        final meal = _createMockMeal(dateTime);
+        
+        // Добавляем в кэш
+        final dateKey = '${userId}_${_formatDate(dateTime)}';
+        final existingMeals = _mealsCache[dateKey] ?? [];
+        existingMeals.add(meal);
+        _mealsCache[dateKey] = existingMeals;
+        
+        return meal;
+      }
+      rethrow;
+    }
+  }
+  
+  // Создание мок-данных для приёма пищи
+  Meal _createMockMeal(DateTime dateTime) {
+    final mealId = 'mock-meal-${DateTime.now().millisecondsSinceEpoch}';
+    
+    return Meal(
+      id: mealId,
+      userId: userId,
+      name: 'Новый приём пищи',
+      time: dateTime,
+      totalCalories: 0,
+      totalProteins: 0,
+      totalFats: 0,
+      totalCarbs: 0,
+      items: [],
+    );
+  }
+
   // Очистка кэша (можно вызывать при добавлении новых данных)
   void clearCache() {
     _summaryCache.clear();

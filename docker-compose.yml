@@ -83,6 +83,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  nutrition-service:
+    build:
+      context: ./apps/backend/nutrition-service
+      dockerfile: Dockerfile
+    container_name: me-app-nutrition
+    env_file:
+      - ./apps/backend/nutrition-service/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=fitness_nutrition
+    ports:
+      - "${NUTRITION_SERVICE_PORT:-3002}:3002"
+    networks:
+      - me-app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 networks:
   me-app-network:
     name: me-app-network

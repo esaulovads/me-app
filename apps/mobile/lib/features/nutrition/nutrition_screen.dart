@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'widgets/date_navigation_header.dart';
 import 'services/nutrition_service.dart';
 import 'models/meal_model.dart';
+import 'screens/dish_selection_screen.dart';
 
 class NutritionScreen extends StatefulWidget {
   final String userId;
@@ -136,15 +137,94 @@ class _NutritionScreenState extends State<NutritionScreen> {
     }
   }
 
-  // Получение данных из кэша
+  // Получение данных из кэша с сортировкой по времени
   List<Meal> _getCachedMeals() {
     final dateKey = _formatDateKey(_selectedDate);
-    return _mealsCache[dateKey] ?? [];
+    final meals = List<Meal>.from(_mealsCache[dateKey] ?? []);
+    
+    // Сортируем приёмы пищи по времени от раннего к позднему
+    meals.sort((a, b) => a.time.compareTo(b.time));
+    
+    return meals;
   }
 
   DailySummary? _getCachedSummary() {
     final dateKey = _formatDateKey(_selectedDate);
     return _summaryCache[dateKey];
+  }
+
+  // Создание нового приёма пищи
+  Future<void> _createNewMeal() async {
+    // Создаём новый приём пищи с текущим временем, но с датой выбранного дня
+    final mealTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      DateTime.now().hour,
+      DateTime.now().minute,
+    );
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _nutritionService.createMeal(mealTime);
+      
+      // Очищаем кэш для текущей даты и перезагружаем данные
+      final dateKey = _formatDateKey(_selectedDate);
+      _mealsCache.remove(dateKey);
+      _summaryCache.remove(dateKey);
+      
+      await _loadDataForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Приём пищи создан'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка создания приёма пищи: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Переход к экрану выбора блюд
+  Future<void> _navigateToDishSelection(String mealId) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DishSelectionScreen(
+          userId: widget.userId,
+          mealId: mealId,
+        ),
+      ),
+    );
+
+    // Если вернулись с изменениями, перезагружаем данные
+    if (result == true) {
+      await _loadDataForDate(_selectedDate);
+    }
   }
 
   // Виджет для отображения данных питания
@@ -216,8 +296,17 @@ class _NutritionScreenState extends State<NutritionScreen> {
                 ),
                 childCount: meals.length,
               ),
-            )
-          else
+            ),
+
+          // Кнопка "добавить приём пищи"
+          SliverToBoxAdapter(
+            child: RepaintBoundary(
+              child: _buildAddMealButton(),
+            ),
+          ),
+
+          // Пустое состояние (если нет приёмов пищи)
+          if (meals.isEmpty)
             SliverFillRemaining(
               child: RepaintBoundary(
                 child: _buildEmptyState(),
@@ -320,40 +409,142 @@ class _NutritionScreenState extends State<NutritionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Время приёма пищи
           Text(
-            meal.name,
+            meal.formattedTime,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Время: ${meal.formattedTime}',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Калории: ${meal.calories.toInt()} ккал',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
+          
           if (meal.items.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            
+            // Список блюд в приёме пищи
+            ...meal.items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  const Text('- ', style: TextStyle(fontSize: 16)),
+                  Expanded(
+                    child: Text(
+                      '${item.name} (${item.calories.toInt()} ккал / ${item.proteins.toInt()} б / ${item.fats.toInt()} ж / ${item.carbs.toInt()} у)',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )).toList(),
+            
+            const SizedBox(height: 8),
+            
+            // Разделитель
+            Container(
+              height: 1,
+              color: Colors.grey[300],
+              margin: const EdgeInsets.symmetric(vertical: 4),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Итого по приёму пищи
+            Text(
+              '${meal.totalCalories.toInt()} ккал / ${meal.totalProteins.toInt()} б / ${meal.totalFats.toInt()} ж / ${meal.totalCarbs.toInt()} у',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Кнопка "добавить блюдо"
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _navigateToDishSelection(meal.id),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text(
+                  'Добавить блюдо',
+                  style: TextStyle(fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ] else ...[
             const SizedBox(height: 8),
             Text(
-              'Состав: ${meal.items.length} элемент${meal.items.length > 1 ? meal.items.length > 4 ? 'ов' : 'а' : ''}',
+              'Пустой приём пищи',
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[500],
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Кнопка "добавить блюдо" для пустого приёма пищи
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _navigateToDishSelection(meal.id),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text(
+                  'Добавить блюдо',
+                  style: TextStyle(fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  // Кнопка добавления нового приёма пищи
+  Widget _buildAddMealButton() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _createNewMeal,
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text(
+            'Добавить приём пищи',
+            style: TextStyle(fontSize: 16),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
     );
   }
