@@ -57,6 +57,7 @@ class MealItem {
 class Meal {
   final String id;
   final String userId;
+  final String name; // Название приёма пищи
   final DateTime time;
   final double totalCalories;
   final double totalProteins;
@@ -67,6 +68,7 @@ class Meal {
   Meal({
     required this.id,
     required this.userId,
+    required this.name,
     required this.time,
     required this.totalCalories,
     required this.totalProteins,
@@ -75,11 +77,20 @@ class Meal {
     required this.items,
   });
 
+  // Геттер для совместимости с кодом
+  double get calories => totalCalories;
+  
+  // Форматированное время для отображения
+  String get formattedTime {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
   // Создание объекта из JSON
   factory Meal.fromJson(Map<String, dynamic> json) {
     return Meal(
       id: json['id'],
       userId: json['userId'],
+      name: json['name'] ?? _getMealNameFromTime(DateTime.parse(json['time'])),
       time: DateTime.parse(json['time']),
       totalCalories: (json['totalCalories'] as num).toDouble(),
       totalProteins: (json['totalProteins'] as num).toDouble(),
@@ -91,11 +102,27 @@ class Meal {
     );
   }
 
+  // Определение названия приёма пищи по времени
+  static String _getMealNameFromTime(DateTime time) {
+    final hour = time.hour;
+    
+    if (hour >= 5 && hour < 12) {
+      return 'Завтрак';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Обед';
+    } else if (hour >= 17 && hour < 22) {
+      return 'Ужин';
+    } else {
+      return 'Перекус';
+    }
+  }
+
   // Преобразование в JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'userId': userId,
+      'name': name,
       'time': time.toIso8601String(),
       'totalCalories': totalCalories,
       'totalProteins': totalProteins,
