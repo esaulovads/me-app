@@ -227,6 +227,148 @@ class _NutritionScreenState extends State<NutritionScreen> {
     }
   }
 
+  // Удаление приёма пищи
+  Future<void> _deleteMeal(Meal meal) async {
+    // Показываем диалог подтверждения
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Удалить приём пищи?'),
+          content: Text('Вы действительно хотите удалить приём пищи в ${meal.formattedTime}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Удалить'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _nutritionService.deleteMeal(meal.id, meal.time);
+      
+      // Очищаем кэш для текущей даты и перезагружаем данные
+      final dateKey = _formatDateKey(_selectedDate);
+      _mealsCache.remove(dateKey);
+      _summaryCache.remove(dateKey);
+      
+      await _loadDataForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Приём пищи удалён'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка удаления приёма пищи: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Редактирование времени приёма пищи
+  Future<void> _editMealTime(Meal meal) async {
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(meal.time),
+      helpText: 'Выберите время приёма пищи',
+      cancelText: 'Отмена',
+      confirmText: 'Сохранить',
+    );
+
+    if (pickedTime == null) return;
+
+    // Создаём новую дату с выбранным временем но той же датой
+    final newDateTime = DateTime(
+      meal.time.year,
+      meal.time.month,
+      meal.time.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    // Если время не изменилось, ничего не делаем
+    if (newDateTime.isAtSameMomentAs(meal.time)) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _nutritionService.updateMealTime(meal.id, newDateTime);
+      
+      // Очищаем кэш для текущей даты и перезагружаем данные
+      final dateKey = _formatDateKey(_selectedDate);
+      _mealsCache.remove(dateKey);
+      _summaryCache.remove(dateKey);
+      
+      await _loadDataForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Время приёма пищи обновлено'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка обновления времени: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   // Виджет для отображения данных питания
   Widget _buildNutritionContent() {
     if (_isLoading) {
@@ -409,14 +551,47 @@ class _NutritionScreenState extends State<NutritionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Время приёма пищи
-          Text(
-            meal.formattedTime,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+          // Заголовок с временем и кнопками действий
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Время приёма пищи (кликабельное для редактирования)
+              GestureDetector(
+                onTap: () => _editMealTime(meal),
+                child: Row(
+                  children: [
+                    Text(
+                      meal.formattedTime,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.edit,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+              ),
+              // Кнопка удаления
+              IconButton(
+                onPressed: () => _deleteMeal(meal),
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.red,
+                  size: 20,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ],
           ),
           
           if (meal.items.isNotEmpty) ...[

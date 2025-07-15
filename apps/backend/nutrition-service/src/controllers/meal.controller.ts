@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Delete, Body, Param, Headers, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, Query, BadRequestException } from '@nestjs/common';
 import { MealService } from '../services/meal.service';
 import { CreateMealDto } from '../dto/create-meal.dto';
+import { UpdateMealDto } from '../dto/update-meal.dto';
 import { Meal } from '../entities/meal.entity';
 
 @Controller('meals')
@@ -49,6 +50,18 @@ export class MealController {
       throw new BadRequestException('Параметр date обязателен');
     }
     return this.mealService.getDailySummary(userId, date);
+  }
+
+  @Put(':id')
+  async update(
+    @Headers('user-id') userId: string,
+    @Param('id') id: string,
+    @Body() updateMealDto: UpdateMealDto,
+  ): Promise<Meal> {
+    if (!userId) {
+      throw new BadRequestException('User ID заголовок обязателен');
+    }
+    return this.mealService.update(id, userId, updateMealDto);
   }
 
   @Delete(':id')

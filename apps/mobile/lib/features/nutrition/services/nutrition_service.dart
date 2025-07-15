@@ -241,6 +241,72 @@ class NutritionService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  // Удаление приёма пищи
+  Future<void> deleteMeal(String mealId, DateTime mealDate) async {
+    try {
+      final url = Uri.parse('$baseUrl/meals/$mealId');
+      
+      final response = await http.delete(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': userId,
+        },
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        // Очищаем кэш для даты приёма пищи, чтобы обновить данные
+        clearCacheForDate(mealDate);
+      } else {
+        throw Exception('Ошибка удаления приёма пищи: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Нет подключения к интернету');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Обновление времени приёма пищи
+  Future<Meal> updateMealTime(String mealId, DateTime newTime) async {
+    try {
+      final url = Uri.parse('$baseUrl/meals/$mealId');
+      
+      final body = json.encode({
+        'time': newTime.toIso8601String(),
+      });
+
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': userId,
+        },
+        body: body,
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final meal = Meal.fromJson(data);
+        
+        // Очищаем кэш для обеих дат (старой и новой), если они разные
+        clearCacheForDate(newTime);
+        
+        return meal;
+      } else {
+        throw Exception('Ошибка обновления времени приёма пищи: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Нет подключения к интернету');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Освобождение ресурсов
   void dispose() {
     _debounceTimer?.cancel();

@@ -273,4 +273,49 @@ GET /meals/summary?date=2024-03-20
   "totalFats": 65,
   "totalCarbs": 180
 }
-``` 
+```
+
+#### PUT /meals/:id
+Обновление времени приема пищи.
+
+Заголовки:
+```
+user-id: string
+Content-Type: application/json
+```
+
+Тело запроса:
+```json
+{
+  "time": "2024-03-20T14:30:00Z"
+}
+```
+
+Ответ:
+```json
+{
+  "id": "meal-uuid",
+  "userId": "user-uuid",
+  "time": "2024-03-20T14:30:00Z",
+  "totalCalories": 450,
+  "totalProteins": 35,
+  "totalFats": 15,
+  "totalCarbs": 40,
+  "items": [...]
+}
+```
+
+#### DELETE /meals/:id
+Удаление приема пищи.
+
+Заголовки:
+```
+user-id: string
+```
+
+Пример запроса:
+```
+DELETE /meals/meal-uuid
+```
+
+Ответ: HTTP 200 (без тела ответа)

@@ -6,6 +6,7 @@ import { MealItem } from '../entities/meal-item.entity';
 import { Product } from '../entities/product.entity';
 import { Dish } from '../entities/dish.entity';
 import { CreateMealDto } from '../dto/create-meal.dto';
+import { UpdateMealDto } from '../dto/update-meal.dto';
 import { MealItemType } from '../entities/meal-item.entity';
 
 @Injectable()
@@ -143,6 +144,24 @@ export class MealService {
       }),
       { totalCalories: 0, totalProteins: 0, totalFats: 0, totalCarbs: 0 },
     );
+  }
+
+  async update(id: string, userId: string, updateMealDto: UpdateMealDto): Promise<Meal> {
+    // Найдем приём пищи для проверки существования и принадлежности пользователю
+    const meal = await this.mealRepository.findOne({
+      where: { id, userId },
+      relations: ['items', 'items.product', 'items.dish'],
+    });
+
+    if (!meal) {
+      throw new NotFoundException('Meal not found');
+    }
+
+    // Обновляем время
+    meal.time = new Date(updateMealDto.time);
+
+    // Сохраняем изменения
+    return this.mealRepository.save(meal);
   }
 
   async delete(id: string, userId: string): Promise<void> {
