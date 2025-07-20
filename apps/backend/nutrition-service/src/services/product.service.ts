@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Product } from '../entities/product.entity';
 import { CreateProductDto } from '../dto/create-product.dto';
 
@@ -25,11 +25,45 @@ export class ProductService {
     return this.productRepository.save(product);
   }
 
-  async findAllByUserId(userId: string): Promise<Product[]> {
-    return this.productRepository.find({
-      where: { userId },
+  async findAllByUserId(
+    userId: string,
+    limit: number = 10,
+    offset: number = 0,
+    search?: string,
+  ): Promise<{ products: Product[]; total: number }> {
+    const where: any = { userId };
+    
+    // Добавляем поиск по названию, если задан
+    if (search) {
+      where.name = Like(`%${search}%`);
+    }
+
+    const [products, total] = await this.productRepository.findAndCount({
+      where,
       order: { name: 'ASC' },
+      take: limit,
+      skip: offset,
     });
+
+    return { products, total };
+  }
+
+  // Получение недавно использованных продуктов пользователя
+  async getRecentProducts(userId: string): Promise<Product[]> {
+    // Получаем уникальные продукты из недавних приемов пищи (за последние 30 дней)
+    const query = `
+      SELECT DISTINCT p.*
+      FROM products p
+      INNER JOIN meal_items mi ON p.id = mi."productId"
+      INNER JOIN meals m ON mi."mealId" = m.id
+      WHERE m."userId" = $1 
+        AND mi.type = 'PRODUCT'
+        AND m."createdAt" >= NOW() - INTERVAL '30 days'
+      ORDER BY MAX(m."createdAt") DESC
+      LIMIT 10
+    `;
+
+    return this.productRepository.query(query, [userId]);
   }
 
   async findOne(id: string, userId: string): Promise<Product> {

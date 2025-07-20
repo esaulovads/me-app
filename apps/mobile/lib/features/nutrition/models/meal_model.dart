@@ -194,4 +194,68 @@ class DailySummary {
       'totalCarbs': totalCarbs,
     };
   }
+}
+
+// Модель для дневных норм питания пользователя
+class NutritionTargets {
+  final double calories;    // ккал
+  final double proteins;    // г
+  final double fats;        // г
+  final double carbs;       // г
+
+  NutritionTargets({
+    required this.calories,
+    required this.proteins,
+    required this.fats,
+    required this.carbs,
+  });
+
+  // Создание объекта из данных профиля
+  factory NutritionTargets.fromProfile(dynamic profile) {
+    return NutritionTargets(
+      calories: profile.tdee?.toDouble() ?? 0.0,
+      proteins: profile.proteinTarget?.toDouble() ?? 0.0,
+      fats: profile.fatTarget?.toDouble() ?? 0.0,
+      carbs: profile.carbTarget?.toDouble() ?? 0.0,
+    );
+  }
+
+  // Проверка, заполнены ли все нормы
+  bool get isComplete {
+    return calories > 0 && proteins > 0 && fats > 0 && carbs > 0;
+  }
+
+  // Расчет процента выполнения нормы
+  double calculatePercentage(double actual, double target) {
+    if (target <= 0) return 0.0;
+    return (actual / target) * 100;
+  }
+
+  // Форматирование для отображения калорий с процентом
+  String formatCalories(double actual) {
+    if (calories <= 0) return '${actual.toInt()} ккал';
+    final percentage = calculatePercentage(actual, calories);
+    return '${actual.toInt()}/${calories.toInt()} ккал (${percentage.toStringAsFixed(1)}%)';
+  }
+
+  // Форматирование для отображения белков с процентом
+  String formatProteins(double actual) {
+    if (proteins <= 0) return '${actual.toInt()} г';
+    final percentage = calculatePercentage(actual, proteins);
+    return '${actual.toInt()}/${proteins.toInt()} г (${percentage.toStringAsFixed(1)}%)';
+  }
+
+  // Форматирование для отображения жиров с процентом
+  String formatFats(double actual) {
+    if (fats <= 0) return '${actual.toInt()} г';
+    final percentage = calculatePercentage(actual, fats);
+    return '${actual.toInt()}/${fats.toInt()} г (${percentage.toStringAsFixed(1)}%)';
+  }
+
+  // Форматирование для отображения углеводов с процентом
+  String formatCarbs(double actual) {
+    if (carbs <= 0) return '${actual.toInt()} г';
+    final percentage = calculatePercentage(actual, carbs);
+    return '${actual.toInt()}/${carbs.toInt()} г (${percentage.toStringAsFixed(1)}%)';
+  }
 } 

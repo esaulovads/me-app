@@ -167,12 +167,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _showError(String message) {
     setState(() => _errorMessage = message);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+    // Просто устанавливаем сообщение об ошибке в состояние, не показываем всплывашку
   }
 
   Future<void> _selectDate() async {

@@ -12,16 +12,44 @@ export class Meal {
   @Column({ type: 'timestamp' })
   time: Date;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value) || 0,
+    }
+  })
   totalCalories: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value) || 0,
+    }
+  })
   totalProteins: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value) || 0,
+    }
+  })
   totalFats: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value) || 0,
+    }
+  })
   totalCarbs: number;
 
   @OneToMany(() => MealItem, item => item.meal, { cascade: true })

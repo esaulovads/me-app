@@ -170,4 +170,128 @@ export class MealService {
       throw new NotFoundException('Meal not found');
     }
   }
+
+  // Добавление элемента в приём пищи
+  async addItemToMeal(
+    userId: string,
+    mealId: string,
+    addItemDto: {
+      type: MealItemType;
+      id: string;
+      weight: number;
+    },
+  ): Promise<Meal> {
+    try {
+      // Проверяем, что приём пищи существует и принадлежит пользователю
+      const meal = await this.mealRepository.findOne({
+        where: { id: mealId, userId },
+        relations: ['items'],
+      });
+
+      if (!meal) {
+        console.error(`Meal not found: mealId=${mealId}, userId=${userId}`);
+        throw new NotFoundException('Meal not found');
+      }
+
+      console.log(`Adding item to meal: type=${addItemDto.type}, id=${addItemDto.id}, weight=${addItemDto.weight}`);
+
+      let calories = 0;
+      let proteins = 0;
+      let fats = 0;
+      let carbs = 0;
+      let productId: string | null = null;
+      let dishId: string | null = null;
+      let itemName = '';
+
+      // Получаем данные продукта или блюда и рассчитываем КБЖУ
+      if (addItemDto.type === MealItemType.PRODUCT) {
+        // Сначала ищем продукт пользователя, затем глобальный
+        let product = await this.productRepository.findOne({
+          where: { id: addItemDto.id, userId },
+        });
+
+        // Если не найден продукт пользователя, ищем глобальный (без userId)
+        if (!product) {
+          product = await this.productRepository.findOne({
+            where: { id: addItemDto.id },
+          });
+        }
+
+        if (!product) {
+          throw new NotFoundException('Product not found');
+        }
+
+        productId = product.id;
+        itemName = product.name;
+
+        // Рассчитываем КБЖУ на основе веса
+        const ratio = addItemDto.weight / 100;
+        calories = product.caloriesPer100g * ratio;
+        proteins = product.proteinsPer100g * ratio;
+        fats = product.fatsPer100g * ratio;
+        carbs = product.carbsPer100g * ratio;
+      } else if (addItemDto.type === MealItemType.DISH) {
+        // Сначала ищем блюдо пользователя, затем глобальное
+        let dish = await this.dishRepository.findOne({
+          where: { id: addItemDto.id, userId },
+        });
+
+        // Если не найдено блюдо пользователя, ищем глобальное (без userId)
+        if (!dish) {
+          dish = await this.dishRepository.findOne({
+            where: { id: addItemDto.id },
+          });
+        }
+
+        if (!dish) {
+          throw new NotFoundException('Dish not found');
+        }
+
+        dishId = dish.id;
+        itemName = dish.name;
+
+        // Рассчитываем КБЖУ на основе веса
+        const ratio = addItemDto.weight / 100;
+        calories = dish.caloriesPer100g * ratio;
+        proteins = dish.proteinsPer100g * ratio;
+        fats = dish.fatsPer100g * ratio;
+        carbs = dish.carbsPer100g * ratio;
+      }
+
+      // Создаем новый элемент приёма пищи
+      const mealItem = this.mealItemRepository.create({
+        mealId: meal.id,
+        type: addItemDto.type,
+        productId,
+        dishId,
+        name: itemName,
+        weight: addItemDto.weight,
+        calories: Number(calories.toFixed(2)),
+        proteins: Number(proteins.toFixed(2)),
+        fats: Number(fats.toFixed(2)),
+        carbs: Number(carbs.toFixed(2)),
+      });
+
+      // Сохраняем элемент
+      await this.mealItemRepository.save(mealItem);
+
+      // Обновляем итоговые значения приёма пищи
+      meal.totalCalories = Number((Number(meal.totalCalories) + calories).toFixed(2));
+      meal.totalProteins = Number((Number(meal.totalProteins) + proteins).toFixed(2));
+      meal.totalFats = Number((Number(meal.totalFats) + fats).toFixed(2));
+      meal.totalCarbs = Number((Number(meal.totalCarbs) + carbs).toFixed(2));
+
+      // Сохраняем обновлённый приём пищи
+      await this.mealRepository.save(meal);
+
+      // Возвращаем обновлённый приём пищи с элементами
+      return this.mealRepository.findOne({
+        where: { id: mealId },
+        relations: ['items', 'items.product', 'items.dish'],
+      });
+    } catch (error) {
+      console.error(`Error adding item to meal:`, error);
+      throw error;
+    }
+  }
 } 

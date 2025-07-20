@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, Like } from 'typeorm';
 import { Dish } from '../entities/dish.entity';
 import { DishIngredient } from '../entities/dish-ingredient.entity';
 import { Product } from '../entities/product.entity';
@@ -124,12 +124,46 @@ export class DishService {
     }
   }
 
-  async findAllByUserId(userId: string): Promise<Dish[]> {
-    return this.dishRepository.find({
-      where: { userId },
+  async findAllByUserId(
+    userId: string,
+    limit: number = 10,
+    offset: number = 0,
+    search?: string,
+  ): Promise<{ dishes: Dish[]; total: number }> {
+    const where: any = { userId };
+    
+    // Добавляем поиск по названию, если задан
+    if (search) {
+      where.name = Like(`%${search}%`);
+    }
+
+    const [dishes, total] = await this.dishRepository.findAndCount({
+      where,
       relations: ['ingredients', 'ingredients.product'],
       order: { name: 'ASC' },
+      take: limit,
+      skip: offset,
     });
+
+    return { dishes, total };
+  }
+
+  // Получение недавно использованных блюд пользователя
+  async getRecentDishes(userId: string): Promise<Dish[]> {
+    // Получаем уникальные блюда из недавних приемов пищи (за последние 30 дней)
+    const query = `
+      SELECT DISTINCT d.*
+      FROM dishes d
+      INNER JOIN meal_items mi ON d.id = mi."dishId"
+      INNER JOIN meals m ON mi."mealId" = m.id
+      WHERE m."userId" = $1 
+        AND mi.type = 'DISH'
+        AND m."createdAt" >= NOW() - INTERVAL '30 days'
+      ORDER BY MAX(m."createdAt") DESC
+      LIMIT 10
+    `;
+
+    return this.dishRepository.query(query, [userId]);
   }
 
   async findOne(id: string, userId: string): Promise<Dish> {

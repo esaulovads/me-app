@@ -115,14 +115,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // Обработка ошибок API
   void _handleError(dynamic error) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Произошла ошибка: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    // Просто логируем ошибку, не показываем всплывашку
+    print('Произошла ошибка: $error');
   }
 
   // Оптимизированный метод для обновления локального состояния
