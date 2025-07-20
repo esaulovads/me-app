@@ -40,6 +40,9 @@ export class MealItem {
   @Column({ nullable: true })
   dishId?: string;
 
+  @Column()
+  name: string;
+
   @Column('decimal', { precision: 10, scale: 2 })
   weight: number;
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Headers, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, NotFoundException, Query } from '@nestjs/common';
 import { ProductService } from '../services/product.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { Product } from '../entities/product.entity';
@@ -16,8 +16,20 @@ export class ProductController {
   }
 
   @Get()
-  async findAll(@Headers('user-id') userId: string): Promise<Product[]> {
-    return this.productService.findAllByUserId(userId);
+  async findAll(
+    @Headers('user-id') userId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('search') search?: string,
+  ): Promise<{ products: Product[]; total: number }> {
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    const offsetNum = offset ? parseInt(offset, 10) : 0;
+    return this.productService.findAllByUserId(userId, limitNum, offsetNum, search);
+  }
+
+  @Get('recent')
+  async getRecentProducts(@Headers('user-id') userId: string): Promise<Product[]> {
+    return this.productService.getRecentProducts(userId);
   }
 
   @Get(':id')

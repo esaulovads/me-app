@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Headers, Query } from '@nestjs/common';
 import { DishService } from '../services/dish.service';
 import { CreateDishDto } from '../dto/create-dish.dto';
 import { Dish } from '../entities/dish.entity';
@@ -16,8 +16,20 @@ export class DishController {
   }
 
   @Get()
-  async findAll(@Headers('user-id') userId: string): Promise<Dish[]> {
-    return this.dishService.findAllByUserId(userId);
+  async findAll(
+    @Headers('user-id') userId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('search') search?: string,
+  ): Promise<{ dishes: Dish[]; total: number }> {
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    const offsetNum = offset ? parseInt(offset, 10) : 0;
+    return this.dishService.findAllByUserId(userId, limitNum, offsetNum, search);
+  }
+
+  @Get('recent')
+  async getRecentDishes(@Headers('user-id') userId: string): Promise<Dish[]> {
+    return this.dishService.getRecentDishes(userId);
   }
 
   @Get(':id')

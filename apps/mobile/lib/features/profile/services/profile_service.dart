@@ -56,6 +56,9 @@ class ProfileService {
             orElse: () => ActivityLevel.MODERATELY_ACTIVE,
           ) : null,
           tdee: data['tdee']?.toDouble(),
+          proteinTarget: data['proteinTarget']?.toDouble(),
+          fatTarget: data['fatTarget']?.toDouble(),
+          carbTarget: data['carbTarget']?.toDouble(),
         );
         
         // Кэшируем результат

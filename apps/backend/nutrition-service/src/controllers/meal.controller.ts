@@ -3,6 +3,7 @@ import { MealService } from '../services/meal.service';
 import { CreateMealDto } from '../dto/create-meal.dto';
 import { UpdateMealDto } from '../dto/update-meal.dto';
 import { Meal } from '../entities/meal.entity';
+import { MealItemType } from '../entities/meal-item.entity';
 
 @Controller('meals')
 export class MealController {
@@ -73,5 +74,35 @@ export class MealController {
       throw new BadRequestException('User ID заголовок обязателен');
     }
     return this.mealService.delete(id, userId);
+  }
+
+  @Post(':mealId/items')
+  async addItemToMeal(
+    @Headers('user-id') userId: string,
+    @Param('mealId') mealId: string,
+    @Body() addItemDto: {
+      type: MealItemType;
+      id: string; // productId или dishId
+      weight: number;
+    },
+  ): Promise<Meal> {
+    if (!userId) {
+      throw new BadRequestException('User ID заголовок обязателен');
+    }
+    
+    // Валидация данных
+    if (!addItemDto.type || !addItemDto.id || !addItemDto.weight) {
+      throw new BadRequestException('Поля type, id и weight обязательны');
+    }
+
+    if (addItemDto.weight <= 0) {
+      throw new BadRequestException('Вес должен быть больше нуля');
+    }
+
+    if (!Object.values(MealItemType).includes(addItemDto.type)) {
+      throw new BadRequestException('Неверный тип элемента');
+    }
+
+    return this.mealService.addItemToMeal(userId, mealId, addItemDto);
   }
 } 

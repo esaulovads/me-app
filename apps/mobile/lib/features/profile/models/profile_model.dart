@@ -32,6 +32,9 @@ class Profile {
   final UserGoal? goal;
   final ActivityLevel? activityLevel;
   final double? tdee; // Общий расход энергии (дневная норма калорий)
+  final double? proteinTarget; // Дневная норма белков
+  final double? fatTarget; // Дневная норма жиров
+  final double? carbTarget; // Дневная норма углеводов
 
   Profile({
     this.name,
@@ -42,6 +45,9 @@ class Profile {
     this.goal,
     this.activityLevel,
     this.tdee,
+    this.proteinTarget,
+    this.fatTarget,
+    this.carbTarget,
   });
 
   // Метод для создания копии объекта с новыми значениями
@@ -54,6 +60,9 @@ class Profile {
     UserGoal? goal,
     ActivityLevel? activityLevel,
     double? tdee,
+    double? proteinTarget,
+    double? fatTarget,
+    double? carbTarget,
   }) {
     return Profile(
       name: name ?? this.name,
@@ -64,6 +73,9 @@ class Profile {
       goal: goal ?? this.goal,
       activityLevel: activityLevel ?? this.activityLevel,
       tdee: tdee ?? this.tdee,
+      proteinTarget: proteinTarget ?? this.proteinTarget,
+      fatTarget: fatTarget ?? this.fatTarget,
+      carbTarget: carbTarget ?? this.carbTarget,
     );
   }
 } 
