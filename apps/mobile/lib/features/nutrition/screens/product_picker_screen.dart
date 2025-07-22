@@ -7,10 +7,12 @@ import '../widgets/weight_input_modal.dart';
 // Экран выбора продуктов для добавления в рецепт
 class ProductPickerScreen extends StatefulWidget {
   final String userId;
+  final List<String> excludedProductIds; // Список ID продуктов, которые нужно исключить
 
   const ProductPickerScreen({
     Key? key,
     required this.userId,
+    this.excludedProductIds = const [], // По умолчанию пустой список
   }) : super(key: key);
 
   @override
@@ -291,12 +293,16 @@ class _ProductPickerScreenState extends State<ProductPickerScreen> {
       );
     }
 
-    // Комбинируем недавние и обычные продукты
+    // Комбинируем недавние и обычные продукты, исключая уже выбранные
     final allProducts = <Product>[];
-    final recentProductsToShow = _currentSearchQuery.isEmpty ? _recentProducts : <Product>[];
+    final recentProductsToShow = _currentSearchQuery.isEmpty 
+        ? _recentProducts.where((p) => !widget.excludedProductIds.contains(p.id)).toList()
+        : <Product>[];
     
     allProducts.addAll(recentProductsToShow);
-    allProducts.addAll(_products.where((p) => !recentProductsToShow.any((r) => r.id == p.id)));
+    allProducts.addAll(_products.where((p) => 
+        !recentProductsToShow.any((r) => r.id == p.id) && 
+        !widget.excludedProductIds.contains(p.id)));
 
     if (allProducts.isEmpty) {
       return Center(

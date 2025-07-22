@@ -93,37 +93,67 @@ class _AuthWrapperState extends State<AuthWrapper> with PerformanceMonitorMixin 
   }
 
   Future<void> _authenticate() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
+    try {
       await measureAsyncPerformance('Authentication flow', () async {
         // 1. Аутентифицируем пользователя
         final userId = await _authService.authenticate();
         
         // 2. Проверяем заполненность профиля
         final profileService = ProfileService(userId: userId);
-        final isProfileComplete = await profileService.isProfileComplete();
+        
+        try {
+          final isProfileComplete = await profileService.isProfileComplete();
 
-        if (mounted) {
-          // 3. Направляем пользователя на соответствующий экран
-          if (isProfileComplete) {
-            // Если профиль заполнен - показываем основной экран
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => MainScreen(userId: userId),
-              ),
-            );
-          } else {
-            // Если профиль не заполнен - показываем опросник
-            final profile = await profileService.getProfile();
+          if (mounted) {
+            // 3. Направляем пользователя на соответствующий экран
+            if (isProfileComplete) {
+              // Если профиль заполнен - показываем основной экран
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => MainScreen(userId: userId),
+                ),
+              );
+            } else {
+              // Если профиль не заполнен - показываем опросник
+              try {
+                final profile = await profileService.getProfile();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => OnboardingScreen(
+                      userId: userId,
+                      initialProfile: profile,
+                    ),
+                  ),
+                );
+              } catch (profileError) {
+                // Если не удалось загрузить профиль, создаем пустой и показываем опросник
+                print('Не удалось загрузить профиль, создаем новый: $profileError');
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => OnboardingScreen(
+                      userId: userId,
+                      initialProfile: null,
+                    ),
+                  ),
+                );
+              }
+            }
+          }
+        } catch (profileCheckError) {
+          // Если не удалось проверить заполненность профиля, 
+          // считаем что профиль не заполнен и показываем опросник
+          print('Не удалось проверить заполненность профиля, показываем опросник: $profileCheckError');
+          if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (context) => OnboardingScreen(
                   userId: userId,
-                  initialProfile: profile,
+                  initialProfile: null,
                 ),
               ),
             );
@@ -131,9 +161,11 @@ class _AuthWrapperState extends State<AuthWrapper> with PerformanceMonitorMixin 
         }
       });
     } catch (e) {
+      // Показываем ошибку только при критических проблемах с аутентификацией
+      print('Критическая ошибка аутентификации: $e');
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = 'Не удалось подключиться к серверу. Проверьте подключение к интернету.';
           _isLoading = false;
         });
       }
@@ -143,12 +175,55 @@ class _AuthWrapperState extends State<AuthWrapper> with PerformanceMonitorMixin 
   @override
   Widget build(BuildContext context) {
     return measurePerformance('AuthWrapper build', () {
+      if (_isLoading) {
+        // Показываем красивый экран загрузки
+        return Scaffold(
+          backgroundColor: Theme.of(context).primaryColor,
+          body: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Логотип или название приложения
+                Text(
+                  'ME App',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 32),
+                // Индикатор загрузки
+                CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Загрузка...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
       if (_error != null) {
         return Scaffold(
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
                 Text(
                   'Произошла ошибка:\n$_error',
                   textAlign: TextAlign.center,
@@ -156,13 +231,7 @@ class _AuthWrapperState extends State<AuthWrapper> with PerformanceMonitorMixin 
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _error = null;
-                      _isLoading = true;
-                    });
-                    _authenticate();
-                  },
+                  onPressed: _authenticate,
                   child: const Text('Повторить'),
                 ),
               ],

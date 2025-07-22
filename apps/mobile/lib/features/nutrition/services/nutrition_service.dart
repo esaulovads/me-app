@@ -23,6 +23,10 @@ class NutritionService {
   static int _connectionErrors = 0;
   static const int _maxConnectionErrors = 3;
   
+  // Максимальное количество повторных попыток
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(milliseconds: 500);
+  
   // В Android эмуляторе localhost это 10.0.2.2
   static String get baseUrl {
     if (Platform.isAndroid) {
@@ -139,6 +143,35 @@ class NutritionService {
       Uri.parse(url),
       headers: _headers,
     ).timeout(timeout ?? _mediumTimeout);
+  }
+
+  // Выполнение HTTP запроса с retry логикой
+  Future<http.Response> _executeWithRetry(Future<http.Response> Function() request) async {
+    int attempts = 0;
+    while (attempts < _maxRetries) {
+      try {
+        final response = await request();
+        _connectionErrors = 0; // Сбрасываем счетчик при успехе
+        return response;
+      } on SocketException catch (e) {
+        attempts++;
+        print('SocketException (attempt $attempts/$_maxRetries): $e');
+        if (attempts >= _maxRetries) rethrow;
+        await Future.delayed(_retryDelay * attempts);
+      } on http.ClientException catch (e) {
+        attempts++;
+        print('ClientException (attempt $attempts/$_maxRetries): $e');
+        _handleConnectionError();
+        if (attempts >= _maxRetries) rethrow;
+        await Future.delayed(_retryDelay * attempts);
+      } on TimeoutException catch (e) {
+        attempts++;
+        print('TimeoutException (attempt $attempts/$_maxRetries): $e');
+        if (attempts >= _maxRetries) rethrow;
+        await Future.delayed(_retryDelay * attempts);
+      }
+    }
+    throw Exception('Max retries exceeded');
   }
 
   // Получение всех приёмов пищи за конкретный день с кэшированием
@@ -368,20 +401,23 @@ class NutritionService {
     try {
       final url = Uri.parse('$baseUrl/meals/$mealId');
       
-      final response = await _delete(url.toString());
+      final response = await _executeWithRetry(() => _delete(url.toString()));
 
       if (response.statusCode == 200) {
         // Очищаем кэш для даты приёма пищи, чтобы обновить данные
         clearCacheForDate(mealDate);
       } else {
-        throw Exception('Ошибка удаления приёма пищи: ${response.statusCode}');
+        throw Exception('Ошибка удаления приёма пищи: ${response.statusCode} - ${response.body}');
       }
-    } on SocketException {
-      throw Exception('Нет подключения к интернету');
-    } on TimeoutException {
-      throw Exception('Превышено время ожидания ответа');
     } catch (e) {
-      rethrow;
+      print('Error in deleteMeal: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection')) {
+        throw Exception('Нет подключения к интернету');
+      } else if (e.toString().contains('TimeoutException')) {
+        throw Exception('Превышено время ожидания ответа');
+      } else {
+        rethrow;
+      }
     }
   }
 
@@ -581,20 +617,23 @@ class NutritionService {
         'weight': weight,
       });
 
-      final response = await _post(url.toString(), body: body);
+      final response = await _executeWithRetry(() => _post(url.toString(), body: body));
 
       if (response.statusCode == 201) {
         // Очищаем кэши для обновления данных
         _clearMealRelatedCaches();
       } else {
-        throw Exception('Ошибка добавления продукта: ${response.statusCode}');
+        throw Exception('Ошибка добавления продукта: ${response.statusCode} - ${response.body}');
       }
-    } on SocketException {
-      throw Exception('Нет подключения к интернету');
-    } on TimeoutException {
-      throw Exception('Превышено время ожидания ответа');
     } catch (e) {
-      rethrow;
+      print('Error in addProductToMeal: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection')) {
+        throw Exception('Нет подключения к интернету');
+      } else if (e.toString().contains('TimeoutException')) {
+        throw Exception('Превышено время ожидания ответа');
+      } else {
+        rethrow;
+      }
     }
   }
 
@@ -609,20 +648,23 @@ class NutritionService {
         'weight': weight,
       });
 
-      final response = await _post(url.toString(), body: body);
+      final response = await _executeWithRetry(() => _post(url.toString(), body: body));
 
       if (response.statusCode == 201) {
         // Очищаем кэши для обновления данных
         _clearMealRelatedCaches();
       } else {
-        throw Exception('Ошибка добавления блюда: ${response.statusCode}');
+        throw Exception('Ошибка добавления блюда: ${response.statusCode} - ${response.body}');
       }
-    } on SocketException {
-      throw Exception('Нет подключения к интернету');
-    } on TimeoutException {
-      throw Exception('Превышено время ожидания ответа');
     } catch (e) {
-      rethrow;
+      print('Error in addDishToMeal: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection')) {
+        throw Exception('Нет подключения к интернету');
+      } else if (e.toString().contains('TimeoutException')) {
+        throw Exception('Превышено время ожидания ответа');
+      } else {
+        rethrow;
+      }
     }
   }
 

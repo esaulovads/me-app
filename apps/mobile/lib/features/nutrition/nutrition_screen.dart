@@ -73,11 +73,11 @@ class _NutritionScreenState extends State<NutritionScreen>
   }
 
   // Ленивая загрузка данных для выбранной даты
-  Future<void> _loadDataForDate(DateTime date) async {
+  Future<void> _loadDataForDate(DateTime date, {bool forceReload = false}) async {
     final dateKey = _formatDateKey(date);
     
-    // Если данные уже в кэше, не загружаем повторно
-    if (_mealsCache.containsKey(dateKey) && _summaryCache.containsKey(dateKey)) {
+    // Если данные уже в кэше и не требуется принудительная перезагрузка, не загружаем повторно
+    if (!forceReload && _mealsCache.containsKey(dateKey) && _summaryCache.containsKey(dateKey)) {
       return;
     }
 
@@ -87,10 +87,13 @@ class _NutritionScreenState extends State<NutritionScreen>
     _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
       if (!mounted) return;
       
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+      // Устанавливаем состояние загрузки только если оно еще не установлено
+      if (!_isLoading) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
 
       try {
         // Загружаем данные параллельно
@@ -104,12 +107,15 @@ class _NutritionScreenState extends State<NutritionScreen>
           _mealsCache[dateKey] = results[0] as List<Meal>;
           _summaryCache[dateKey] = results[1] as DailySummary;
           
-          setState(() {
-            _isLoading = false;
-          });
+          // Сбрасываем состояние загрузки только если мы его устанавливали
+          if (_isLoading) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
         }
       } catch (e) {
-        if (mounted) {
+        if (mounted && _isLoading) {
           setState(() {
             _isLoading = false;
             _error = e.toString();
@@ -117,6 +123,27 @@ class _NutritionScreenState extends State<NutritionScreen>
         }
       }
     });
+  }
+
+  // Принудительная загрузка данных без debounce (для использования после изменений)
+  Future<void> _forceLoadDataForDate(DateTime date) async {
+    final dateKey = _formatDateKey(date);
+    
+    try {
+      // Загружаем данные параллельно
+      final results = await Future.wait([
+        _nutritionService.getMealsForDate(date),
+        _nutritionService.getDailySummary(date),
+      ]);
+
+      if (mounted) {
+        // Кэшируем результаты
+        _mealsCache[dateKey] = results[0] as List<Meal>;
+        _summaryCache[dateKey] = results[1] as DailySummary;
+      }
+    } catch (e) {
+      rethrow; // Перебрасываем ошибку для обработки в вызывающем коде
+    }
   }
 
   // Форматирование даты для ключа кэша
@@ -198,12 +225,12 @@ class _NutritionScreenState extends State<NutritionScreen>
     try {
       await _nutritionService.createMeal(mealTime);
       
-      // Очищаем кэш для текущей даты и перезагружаем данные
+      // Очищаем кэш для текущей даты и принудительно перезагружаем данные
       final dateKey = _formatDateKey(_selectedDate);
       _mealsCache.remove(dateKey);
       _summaryCache.remove(dateKey);
       
-      await _loadDataForDate(_selectedDate);
+      await _forceLoadDataForDate(_selectedDate);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -219,7 +246,7 @@ class _NutritionScreenState extends State<NutritionScreen>
     }
   }
 
-  // Переход к экрану выбора блюд
+    // Переход к экрану выбора блюд
   Future<void> _navigateToDishSelection(String mealId) async {
     final result = await Navigator.push(
       context,
@@ -233,18 +260,37 @@ class _NutritionScreenState extends State<NutritionScreen>
 
     // Если вернулись с изменениями, перезагружаем данные
     if (result == true) {
-      // Показываем минимальный индикатор загрузки только в области обновления
-      setState(() {
-        _error = null;
-      });
-      
-      // Принудительно очищаем кэш для этой даты, чтобы получить свежие данные
+      // Принудительно очищаем кэш для этой даты
       final dateKey = _formatDateKey(_selectedDate);
       _mealsCache.remove(dateKey);
       _summaryCache.remove(dateKey);
       
-      // Загружаем обновленные данные
-      await _loadDataForDate(_selectedDate);
+      // Отменяем любые предыдущие таймеры debounce
+      _debounceTimer?.cancel();
+      
+      // Показываем индикатор загрузки и очищаем ошибки
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+      
+      try {
+        // Используем принудительную загрузку без debounce
+        await _forceLoadDataForDate(_selectedDate);
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _error = e.toString();
+          });
+        }
+      } finally {
+        // Всегда сбрасываем состояние загрузки
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -284,12 +330,12 @@ class _NutritionScreenState extends State<NutritionScreen>
     try {
       await _nutritionService.deleteMeal(meal.id, meal.time);
       
-      // Очищаем кэш для текущей даты и перезагружаем данные
+      // Очищаем кэш для текущей даты и принудительно перезагружаем данные
       final dateKey = _formatDateKey(_selectedDate);
       _mealsCache.remove(dateKey);
       _summaryCache.remove(dateKey);
       
-      await _loadDataForDate(_selectedDate);
+      await _forceLoadDataForDate(_selectedDate);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -337,12 +383,12 @@ class _NutritionScreenState extends State<NutritionScreen>
     try {
       await _nutritionService.updateMealTime(meal.id, newDateTime);
       
-      // Очищаем кэш для текущей даты и перезагружаем данные
+      // Очищаем кэш для текущей даты и принудительно перезагружаем данные
       final dateKey = _formatDateKey(_selectedDate);
       _mealsCache.remove(dateKey);
       _summaryCache.remove(dateKey);
       
-      await _loadDataForDate(_selectedDate);
+      await _forceLoadDataForDate(_selectedDate);
     } catch (e) {
       if (mounted) {
         setState(() {
