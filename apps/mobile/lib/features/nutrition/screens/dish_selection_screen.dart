@@ -288,15 +288,6 @@ class _DishSelectionScreenState extends State<DishSelectionScreen>
         // Закрываем индикатор загрузки
         Navigator.of(context).pop();
         
-        // Показываем сообщение об успехе
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${product.name} добавлен в приём пищи'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        
         // Возвращаемся на экран питания с обновлением данных
         Navigator.pop(context, true);
       }
@@ -347,15 +338,6 @@ class _DishSelectionScreenState extends State<DishSelectionScreen>
       if (mounted) {
         // Закрываем индикатор загрузки
         Navigator.of(context).pop();
-        
-        // Показываем сообщение об успехе
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${dish.name} добавлено в приём пищи'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
         
         // Возвращаемся на экран питания с обновлением данных
         Navigator.pop(context, true);

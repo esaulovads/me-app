@@ -193,7 +193,14 @@ export class MealService {
         throw new NotFoundException('Meal not found');
       }
 
-      console.log(`Adding item to meal: type=${addItemDto.type}, id=${addItemDto.id}, weight=${addItemDto.weight}`);
+      // Дополнительная проверка целостности данных
+      if (!meal.id || meal.id !== mealId) {
+        console.error(`Meal ID mismatch: meal.id=${meal.id}, expected=${mealId}`);
+        throw new Error('Meal ID integrity error');
+      }
+
+      console.log(`Adding item to meal: mealId=${mealId}, type=${addItemDto.type}, id=${addItemDto.id}, weight=${addItemDto.weight}`);
+      console.log(`Meal object:`, { id: meal.id, userId: meal.userId, totalCalories: meal.totalCalories });
 
       let calories = 0;
       let proteins = 0;
@@ -258,31 +265,43 @@ export class MealService {
         carbs = dish.carbsPer100g * ratio;
       }
 
-      // Создаем новый элемент приёма пищи
-      const mealItem = this.mealItemRepository.create({
-        mealId: meal.id,
-        type: addItemDto.type,
-        productId,
-        dishId,
-        name: itemName,
-        weight: addItemDto.weight,
-        calories: Number(calories.toFixed(2)),
-        proteins: Number(proteins.toFixed(2)),
-        fats: Number(fats.toFixed(2)),
-        carbs: Number(carbs.toFixed(2)),
-      });
+      // Создаем новый элемент приёма пищи напрямую через query builder
+      console.log(`Creating MealItem with mealId: ${mealId}, meal.id: ${meal.id}`);
+      
+      const result = await this.mealItemRepository
+        .createQueryBuilder()
+        .insert()
+        .into(MealItem)
+        .values({
+          mealId: mealId,
+          type: addItemDto.type,
+          productId: productId,
+          dishId: dishId,
+          name: itemName,
+          weight: addItemDto.weight,
+          calories: Number(calories.toFixed(2)),
+          proteins: Number(proteins.toFixed(2)),
+          fats: Number(fats.toFixed(2)),
+          carbs: Number(carbs.toFixed(2)),
+        })
+        .execute();
+      
+      console.log(`Insert result:`, result);
 
-      // Сохраняем элемент
-      await this.mealItemRepository.save(mealItem);
-
-      // Обновляем итоговые значения приёма пищи
-      meal.totalCalories = Number((Number(meal.totalCalories) + calories).toFixed(2));
-      meal.totalProteins = Number((Number(meal.totalProteins) + proteins).toFixed(2));
-      meal.totalFats = Number((Number(meal.totalFats) + fats).toFixed(2));
-      meal.totalCarbs = Number((Number(meal.totalCarbs) + carbs).toFixed(2));
-
-      // Сохраняем обновлённый приём пищи
-      await this.mealRepository.save(meal);
+      // Обновляем итоговые значения приёма пищи напрямую в базе данных
+      await this.mealRepository
+        .createQueryBuilder()
+        .update(Meal)
+        .set({
+          totalCalories: () => `"totalCalories" + ${calories.toFixed(2)}`,
+          totalProteins: () => `"totalProteins" + ${proteins.toFixed(2)}`,
+          totalFats: () => `"totalFats" + ${fats.toFixed(2)}`,
+          totalCarbs: () => `"totalCarbs" + ${carbs.toFixed(2)}`,
+        })
+        .where('id = :id', { id: mealId })
+        .execute();
+      
+      console.log(`Updated meal totals for mealId: ${mealId}`);
 
       // Возвращаем обновлённый приём пищи с элементами
       return this.mealRepository.findOne({

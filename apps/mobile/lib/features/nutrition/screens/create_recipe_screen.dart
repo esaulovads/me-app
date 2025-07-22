@@ -66,10 +66,18 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
 
   // Добавление продукта в рецепт
   Future<void> _addIngredient() async {
+    // Получаем список ID уже выбранных продуктов
+    final excludedProductIds = _ingredients
+        .map((ingredient) => ingredient.productId)
+        .toList();
+    
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductPickerScreen(userId: widget.userId),
+        builder: (context) => ProductPickerScreen(
+          userId: widget.userId,
+          excludedProductIds: excludedProductIds,
+        ),
       ),
     );
 
