@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Модальное окно для ввода веса продукта или блюда
+// Модальное окно для ввода веса продукта или блюда с кнопками быстрого изменения веса
 class WeightInputModal extends StatefulWidget {
   final String itemName;
   final String itemType; // "продукт" или "блюдо"
@@ -25,15 +25,20 @@ class _WeightInputModalState extends State<WeightInputModal> {
   final FocusNode _focusNode = FocusNode();
   String? _error;
   bool _isLoading = false;
+  
+  // Текущий вес в граммах
+  double _currentWeight = 0.0;
 
   @override
   void initState() {
     super.initState();
     
-    // Устанавливаем значение по умолчанию, если есть
-    if (widget.defaultWeight != null) {
-      _weightController.text = widget.defaultWeight!.toInt().toString();
-    }
+    // Устанавливаем значение по умолчанию: defaultWeight или 100г
+    _currentWeight = widget.defaultWeight ?? 100.0;
+    _weightController.text = _currentWeight.toInt().toString();
+    
+    // Слушаем изменения в поле ввода
+    _weightController.addListener(_onTextChanged);
     
     // Автофокус на поле ввода
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -43,38 +48,36 @@ class _WeightInputModalState extends State<WeightInputModal> {
 
   @override
   void dispose() {
+    _weightController.removeListener(_onTextChanged);
     _weightController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
+  // Обработка изменений в текстовом поле
+  void _onTextChanged() {
+    final text = _weightController.text.trim();
+    if (text.isEmpty) {
+      _currentWeight = 0.0;
+    } else {
+      final weight = double.tryParse(text);
+      if (weight != null && weight >= 0) {
+        _currentWeight = weight;
+      }
+    }
+    _validateWeight();
+  }
+
   // Валидация введенного веса
   bool _validateWeight() {
-    final text = _weightController.text.trim();
-    
-    if (text.isEmpty) {
-      setState(() {
-        _error = 'Введите вес';
-      });
-      return false;
-    }
-
-    final weight = double.tryParse(text);
-    if (weight == null) {
-      setState(() {
-        _error = 'Введите корректное число';
-      });
-      return false;
-    }
-
-    if (weight <= 0) {
+    if (_currentWeight <= 0) {
       setState(() {
         _error = 'Вес должен быть больше 0';
       });
       return false;
     }
 
-    if (weight > 10000) {
+    if (_currentWeight > 10000) {
       setState(() {
         _error = 'Максимальный вес 10000г';
       });
@@ -87,6 +90,25 @@ class _WeightInputModalState extends State<WeightInputModal> {
     return true;
   }
 
+  // Изменение веса на заданное количество граммов
+  void _changeWeight(int grams) {
+    double newWeight = _currentWeight + grams;
+    
+    // Ограничиваем минимальный вес нулём
+    if (newWeight < 0) {
+      newWeight = 0;
+    }
+    
+    // Ограничиваем максимальный вес
+    if (newWeight > 10000) {
+      newWeight = 10000;
+    }
+    
+    _currentWeight = newWeight;
+    _weightController.text = newWeight == 0 ? '' : newWeight.toInt().toString();
+    _validateWeight();
+  }
+
   // Подтверждение ввода
   void _confirm() {
     if (!_validateWeight()) return;
@@ -95,8 +117,7 @@ class _WeightInputModalState extends State<WeightInputModal> {
       _isLoading = true;
     });
 
-    final weight = double.parse(_weightController.text.trim());
-    Navigator.of(context).pop(weight);
+    Navigator.of(context).pop(_currentWeight);
   }
 
   // Отмена
@@ -107,9 +128,46 @@ class _WeightInputModalState extends State<WeightInputModal> {
   // Установка стандартного веса (для продуктов)
   void _setDefaultWeight() {
     if (widget.defaultWeight != null) {
-      _weightController.text = widget.defaultWeight!.toInt().toString();
+      _currentWeight = widget.defaultWeight!;
+      _weightController.text = _currentWeight.toInt().toString();
       _validateWeight();
     }
+  }
+
+  // Виджет кнопки изменения веса
+  Widget _buildWeightButton({
+    required String label,
+    required int grams,
+    required bool isDecrease,
+  }) {
+    final isEnabled = !_isLoading && 
+        (isDecrease ? _currentWeight > 0 : _currentWeight < 10000);
+    
+    return SizedBox(
+      width: 50,
+      height: 36,
+      child: OutlinedButton(
+        onPressed: isEnabled ? () => _changeWeight(grams) : null,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          side: BorderSide(
+            color: isEnabled ? Theme.of(context).primaryColor : Colors.grey[400]!,
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: isEnabled ? Theme.of(context).primaryColor : Colors.grey[400],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -137,6 +195,7 @@ class _WeightInputModalState extends State<WeightInputModal> {
             
             // Название продукта/блюда
             Container(
+              width: double.infinity, // Делаем блок на всю ширину
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
@@ -166,7 +225,7 @@ class _WeightInputModalState extends State<WeightInputModal> {
             
             const SizedBox(height: 16),
             
-            // Поле ввода веса
+            // Поле ввода веса с кнопками
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -180,8 +239,35 @@ class _WeightInputModalState extends State<WeightInputModal> {
                 
                 const SizedBox(height: 8),
                 
+                // Основной ряд с кнопками уменьшения, полем ввода и кнопками увеличения
                 Row(
                   children: [
+                    // Кнопки уменьшения веса
+                    Column(
+                      children: [
+                        _buildWeightButton(
+                          label: '-5',
+                          grams: -5,
+                          isDecrease: true,
+                        ),
+                        const SizedBox(height: 4),
+                        _buildWeightButton(
+                          label: '-50',
+                          grams: -50,
+                          isDecrease: true,
+                        ),
+                        const SizedBox(height: 4),
+                        _buildWeightButton(
+                          label: '-100',
+                          grams: -100,
+                          isDecrease: true,
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(width: 12),
+                    
+                    // Поле ввода веса
                     Expanded(
                       child: TextField(
                         controller: _weightController,
@@ -194,32 +280,74 @@ class _WeightInputModalState extends State<WeightInputModal> {
                             RegExp(r'^\d*\.?\d*'),
                           ),
                         ],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Введите вес',
+                          hintText: '100',
                           suffixText: 'г',
                           border: const OutlineInputBorder(),
                           errorText: _error,
                           enabled: !_isLoading,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
                         ),
-                        onChanged: (_) => _validateWeight(),
                         onSubmitted: (_) => _confirm(),
                       ),
                     ),
                     
-                    // Кнопка "Порция" для продуктов
-                    if (widget.defaultWeight != null) ...[
-                      const SizedBox(width: 12),
-                      OutlinedButton(
-                        onPressed: _isLoading ? null : _setDefaultWeight,
-                        child: Text(
-                          '${widget.defaultWeight!.toInt()}г\n(порция)',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12),
+                    const SizedBox(width: 12),
+                    
+                    // Кнопки увеличения веса
+                    Column(
+                      children: [
+                        _buildWeightButton(
+                          label: '+5',
+                          grams: 5,
+                          isDecrease: false,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        _buildWeightButton(
+                          label: '+50',
+                          grams: 50,
+                          isDecrease: false,
+                        ),
+                        const SizedBox(height: 4),
+                        _buildWeightButton(
+                          label: '+100',
+                          grams: 100,
+                          isDecrease: false,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
+                
+                // Кнопка "Порция" для продуктов (если есть стандартный вес)
+                if (widget.defaultWeight != null) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : _setDefaultWeight,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                      child: Text(
+                        'Порция (${widget.defaultWeight!.toInt()}г)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             
@@ -237,7 +365,7 @@ class _WeightInputModalState extends State<WeightInputModal> {
                 const SizedBox(width: 12),
                 
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _confirm,
+                  onPressed: (_isLoading || _currentWeight <= 0) ? null : _confirm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,

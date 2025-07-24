@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'widgets/date_navigation_header.dart';
+import 'widgets/nutrition_ring_progress.dart';
 import 'services/nutrition_service.dart';
 import 'models/meal_model.dart';
 import 'screens/dish_selection_screen.dart';
@@ -522,64 +523,124 @@ class _NutritionScreenState extends State<NutritionScreen>
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNutrientColumn(
-                  'Калории', 
-                  _nutritionTargets?.formatCalories(summary.totalCalories) ?? '${summary.totalCalories.toInt()}',
-                  'ккал'
-                ),
-                _buildNutrientColumn(
-                  'Белки', 
-                  _nutritionTargets?.formatProteins(summary.totalProteins) ?? '${summary.totalProteins.toInt()}',
-                  'г'
-                ),
-                _buildNutrientColumn(
-                  'Жиры', 
-                  _nutritionTargets?.formatFats(summary.totalFats) ?? '${summary.totalFats.toInt()}',
-                  'г'
-                ),
-                _buildNutrientColumn(
-                  'Углеводы', 
-                  _nutritionTargets?.formatCarbs(summary.totalCarbs) ?? '${summary.totalCarbs.toInt()}',
-                  'г'
-                ),
-              ],
-            ),
+            const SizedBox(height: 16),
+            // Сетка 2x2 с автоматическим выравниванием колец
+            _buildNutrientGrid(summary),
           ],
         ),
       ),
     );
   }
 
-  // Колонка с нутриентом - оптимизированная версия
-  Widget _buildNutrientColumn(String label, String value, String unit) {
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min, // Оптимизация размера
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF757575), // Заменяем Colors.grey[600] на const
-            ),
+  // Сетка нутриентов с выравниванием в одну колонку
+  Widget _buildNutrientGrid(DailySummary summary) {
+    // Все данные о нутриентах
+    final nutrients = [
+      _NutrientData('Калории', summary.totalCalories, _nutritionTargets?.calories ?? 0, 'ккал'),
+      _NutrientData('Белки', summary.totalProteins, _nutritionTargets?.proteins ?? 0, 'г'),
+      _NutrientData('Жиры', summary.totalFats, _nutritionTargets?.fats ?? 0, 'г'),
+      _NutrientData('Углеводы', summary.totalCarbs, _nutritionTargets?.carbs ?? 0, 'г'),
+    ];
+
+    return Row(
+      children: [
+        // Левая колонка (Калории, Жиры)
+        Expanded(
+          child: Column(
+            children: [
+              _buildOptimizedNutrientColumn(nutrients[0]), // Калории
+              const SizedBox(height: 12),
+              _buildOptimizedNutrientColumn(nutrients[2]), // Жиры
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1, // Ограничиваем количество строк
-            overflow: TextOverflow.ellipsis, // Обрезаем длинный текст
+        ),
+        
+        const SizedBox(width: 24), // Увеличенный отступ между колонками
+        
+        // Правая колонка (Белки, Углеводы)
+        Expanded(
+          child: Column(
+            children: [
+              _buildOptimizedNutrientColumn(nutrients[1]), // Белки
+              const SizedBox(height: 12),
+              _buildOptimizedNutrientColumn(nutrients[3]), // Углеводы
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  // Оптимизированная колонка с нутриентом с кольцом прогресса
+  // Отображает данные в 3 строки: заголовок (маленький светлый) -> факт (крупный жирный) -> норма с % (средний светлый)
+  // Справа добавлено кольцо прогресса
+  Widget _buildOptimizedNutrientColumn(_NutrientData nutrient) {
+    // Вычисляем процент от нормы
+    final percentage = nutrient.target > 0 ? ((nutrient.actual / nutrient.target) * 100).round() : 0;
+    
+    return Row(
+      children: [
+        // Основная информация о нутриенте
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Заголовок - самый маленький, светлый
+              Text(
+                nutrient.label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF9E9E9E), // Светло-серый цвет
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 2),
+              
+              // Факт за день - крупным жирным тёмным текстом
+              Text(
+                '${nutrient.actual.toInt()} ${nutrient.unit}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF212121), // Тёмно-серый
+                ),
+              ),
+              const SizedBox(height: 1),
+              
+              // Норма на день с процентом - более мелким и светлым текстом
+              if (nutrient.target > 0)
+                Text(
+                  'из ${nutrient.target.toInt()} ($percentage%)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF757575), // Средне-серый
+                    fontWeight: FontWeight.w400,
+                  ),
+                )
+              else
+                const Text(
+                  'норма не задана',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9E9E9E), // Светло-серый
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(width: 6), // Уменьшенный отступ между текстом и кольцом
+        
+        // Кольцо прогресса (выровнено по правому краю колонки)
+        NutritionRingProgress(
+          actual: nutrient.actual,
+          target: nutrient.target,
+          size: 36.0,
+          strokeWidth: 7.0,
+        ),
+      ],
     );
   }
 
@@ -852,4 +913,14 @@ class _NutritionScreenState extends State<NutritionScreen>
       ),
     );
   }
+}
+
+// Класс для хранения данных о нутриенте
+class _NutrientData {
+  final String label;
+  final double actual;
+  final double target;
+  final String unit;
+
+  const _NutrientData(this.label, this.actual, this.target, this.unit);
 } 

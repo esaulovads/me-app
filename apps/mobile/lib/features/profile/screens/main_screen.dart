@@ -36,6 +36,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _hasProfileLoadError = false; // Добавляем флаг для отслеживания ошибки загрузки профиля
   
   // Debounce для предотвращения частых обновлений
   Timer? _nutritionUpdateTimer;
@@ -104,6 +105,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
         
         if (mounted && profile != _cachedProfile) {
           _cachedProfile = profile;
+          _hasProfileLoadError = false; // Сбрасываем флаг ошибки при успешной загрузке
           
           // Вычисляем возраст в изоляте с мониторингом
           if (profile.birthDate != null) {
@@ -118,6 +120,12 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
         }
       } catch (e) {
         debugPrint('Ошибка загрузки профиля: $e');
+        // Устанавливаем флаг ошибки только если это не первоначальная загрузка
+        if (mounted && _isInitialized) {
+          setState(() {
+            _hasProfileLoadError = true;
+          });
+        }
       }
     });
   }
@@ -308,13 +316,15 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   @override
   Widget build(BuildContext context) {
     return measurePerformance('Main screen build', () {
+      // Показываем индикатор загрузки во время инициализации
       if (_isLoading || !_isInitialized) {
         return const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         );
       }
 
-      if (_cachedProfile == null) {
+      // Показываем ошибку только если есть явная ошибка загрузки И система уже инициализирована
+      if (_hasProfileLoadError && _cachedProfile == null) {
         return Scaffold(
           body: Center(
             child: Column(
@@ -327,7 +337,9 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    _cachedProfile = null;
+                    setState(() {
+                      _hasProfileLoadError = false;
+                    });
                     _loadProfile();
                   },
                   child: const Text('Повторить'),
@@ -335,6 +347,13 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
               ],
             ),
           ),
+        );
+      }
+
+      // Если профиль еще не загружен, но нет ошибки - показываем загрузку
+      if (_cachedProfile == null) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
         );
       }
 
