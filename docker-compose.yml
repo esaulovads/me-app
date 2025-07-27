@@ -105,6 +105,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  sleep-service:
+    build:
+      context: ./apps/backend/sleep-service
+      dockerfile: Dockerfile
+    container_name: me-app-sleep
+    env_file:
+      - ./apps/backend/sleep-service/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=fitness_sleep
+    ports:
+      - "${SLEEP_SERVICE_PORT:-3003}:3003"
+    networks:
+      - me-app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 networks:
   me-app-network:
     name: me-app-network
