@@ -105,6 +105,78 @@ const FAT_MATRIX_MALE = {
   },
 };
 
+// Матрица базовой длительности сна (в часах) по полу и возрасту
+const BASE_SLEEP_MATRIX = {
+  [Gender.MALE]: {
+    '18-25': 7.5,
+    '26-35': 7.5,
+    '36-45': 7.0,
+    '46-55': 7.0,
+    '56-65': 6.5,
+    '65+': 6.5,
+  },
+  [Gender.FEMALE]: {
+    '18-25': 8.0,
+    '26-35': 8.0,
+    '36-45': 7.5,
+    '46-55': 7.5,
+    '56-65': 7.0,
+    '65+': 6.5,
+  },
+};
+
+// Матрица модификаторов активности для сна (в часах)
+const SLEEP_ACTIVITY_MODIFIER_MATRIX = {
+  '18-35': {
+    [Gender.MALE]: {
+      [ActivityLevel.SEDENTARY]: 0.00,
+      [ActivityLevel.LIGHTLY_ACTIVE]: 0.00, // "низкая активность"
+      [ActivityLevel.MODERATELY_ACTIVE]: 0.25, // "умеренная"
+      [ActivityLevel.VERY_ACTIVE]: 0.50, // "высокая"
+      [ActivityLevel.EXTREMELY_ACTIVE]: 0.75, // "экстремальная"
+    },
+    [Gender.FEMALE]: {
+      [ActivityLevel.SEDENTARY]: 0.00,
+      [ActivityLevel.LIGHTLY_ACTIVE]: 0.00, // "низкая активность"
+      [ActivityLevel.MODERATELY_ACTIVE]: 0.30, // "умеренная"
+      [ActivityLevel.VERY_ACTIVE]: 0.60, // "высокая"
+      [ActivityLevel.EXTREMELY_ACTIVE]: 0.85, // "экстремальная"
+    },
+  },
+  '36-55': {
+    [Gender.MALE]: {
+      [ActivityLevel.SEDENTARY]: 0.00,
+      [ActivityLevel.LIGHTLY_ACTIVE]: 0.00,
+      [ActivityLevel.MODERATELY_ACTIVE]: 0.20,
+      [ActivityLevel.VERY_ACTIVE]: 0.45,
+      [ActivityLevel.EXTREMELY_ACTIVE]: 0.70,
+    },
+    [Gender.FEMALE]: {
+      [ActivityLevel.SEDENTARY]: 0.00,
+      [ActivityLevel.LIGHTLY_ACTIVE]: 0.00,
+      [ActivityLevel.MODERATELY_ACTIVE]: 0.25,
+      [ActivityLevel.VERY_ACTIVE]: 0.55,
+      [ActivityLevel.EXTREMELY_ACTIVE]: 0.80,
+    },
+  },
+  '56+': {
+    [Gender.MALE]: {
+      [ActivityLevel.SEDENTARY]: 0.00,
+      [ActivityLevel.LIGHTLY_ACTIVE]: 0.00,
+      [ActivityLevel.MODERATELY_ACTIVE]: 0.15,
+      [ActivityLevel.VERY_ACTIVE]: 0.35,
+      [ActivityLevel.EXTREMELY_ACTIVE]: 0.60,
+    },
+    [Gender.FEMALE]: {
+      [ActivityLevel.SEDENTARY]: 0.00,
+      [ActivityLevel.LIGHTLY_ACTIVE]: 0.00,
+      [ActivityLevel.MODERATELY_ACTIVE]: 0.20,
+      [ActivityLevel.VERY_ACTIVE]: 0.40,
+      [ActivityLevel.EXTREMELY_ACTIVE]: 0.65,
+    },
+  },
+};
+
 @Entity('profiles')
 export class Profile {
   @PrimaryGeneratedColumn('uuid')
@@ -174,6 +246,9 @@ export class Profile {
 
   @Column('float', { nullable: true })
   carbTarget: number; // Дневная норма углеводов
+
+  @Column('float', { nullable: true })
+  recommendedSleepDuration: number; // Рекомендуемая продолжительность сна
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
@@ -303,6 +378,49 @@ export class Profile {
     return Math.round(carbCalories / 4);
   }
 
+  // Метод для определения возрастной группы
+  private getAgeGroup(age: number): string {
+    if (age >= 18 && age <= 25) return '18-25';
+    if (age >= 26 && age <= 35) return '26-35';
+    if (age >= 36 && age <= 45) return '36-45';
+    if (age >= 46 && age <= 55) return '46-55';
+    if (age >= 56 && age <= 65) return '56-65';
+    return '65+';
+  }
+
+  // Метод для определения возрастной группы для модификаторов активности
+  private getActivityAgeGroup(age: number): string {
+    if (age >= 18 && age <= 35) return '18-35';
+    if (age >= 36 && age <= 55) return '36-55';
+    return '56+';
+  }
+
+  // Расчет рекомендуемой продолжительности сна
+  calculateRecommendedSleepDuration(): number | null {
+    if (!this.birthDate || !this.gender || !this.activityLevel) {
+      return null;
+    }
+
+    // Рассчитываем возраст
+    const today = new Date();
+    const birthDate = typeof this.birthDate === 'string' ? new Date(this.birthDate) : this.birthDate;
+    const age = today.getFullYear() - birthDate.getFullYear();
+
+    // Получаем базовую длительность сна
+    const ageGroup = this.getAgeGroup(age);
+    const baseSleepDuration = BASE_SLEEP_MATRIX[this.gender][ageGroup];
+
+    // Получаем модификатор активности
+    const activityAgeGroup = this.getActivityAgeGroup(age);
+    const activityModifier = SLEEP_ACTIVITY_MODIFIER_MATRIX[activityAgeGroup][this.gender][this.activityLevel];
+
+    // Рассчитываем итоговую рекомендуемую продолжительность
+    const recommendedDuration = baseSleepDuration + activityModifier;
+
+    // Округляем до одного знака после запятой
+    return Number(recommendedDuration.toFixed(1));
+  }
+
   // Обновляем хук для автоматического расчета всех значений
   @BeforeInsert()
   @BeforeUpdate()
@@ -319,5 +437,6 @@ export class Profile {
     this.proteinTarget = this.calculateProteinTarget();
     this.fatTarget = this.calculateFatTarget();
     this.carbTarget = this.calculateCarbTarget();
+    this.recommendedSleepDuration = this.calculateRecommendedSleepDuration();
   }
 } 
