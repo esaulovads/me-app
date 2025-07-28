@@ -156,4 +156,21 @@ export class ProfileService {
     }
     return profile.isComplete();
   }
+
+  // Принудительный пересчет рекомендуемой продолжительности сна
+  async recalculateRecommendedSleepDuration(userId: string): Promise<Profile> {
+    let profile = await this.profileRepository.findOne({ where: { userId } });
+    if (!profile) {
+      throw new NotFoundException('Профиль не найден');
+    }
+
+    // Пересчитываем recommendedSleepDuration принудительно
+    const newSleepDuration = profile.calculateRecommendedSleepDuration();
+    profile.recommendedSleepDuration = newSleepDuration;
+
+    // Сохраняем обновленный профиль
+    await this.profileRepository.save(profile);
+    
+    return profile;
+  }
 } 
