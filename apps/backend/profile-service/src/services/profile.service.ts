@@ -31,9 +31,10 @@ export class ProfileService {
 
   // Получение профиля пользователя
   async getProfile(userId: string): Promise<Profile> {
-    const profile = await this.profileRepository.findOne({ where: { userId } });
+    let profile = await this.profileRepository.findOne({ where: { userId } });
     if (!profile) {
-      throw new NotFoundException('Профиль не найден');
+      // Автоматически инициализируем профиль, если его нет
+      profile = await this.initializeProfile(userId);
     }
     return profile;
   }
