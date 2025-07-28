@@ -35,6 +35,7 @@ class Profile {
   final double? proteinTarget; // Дневная норма белков
   final double? fatTarget; // Дневная норма жиров
   final double? carbTarget; // Дневная норма углеводов
+  final double? recommendedSleepDuration; // Рекомендуемая продолжительность сна в часах
 
   Profile({
     this.name,
@@ -48,6 +49,7 @@ class Profile {
     this.proteinTarget,
     this.fatTarget,
     this.carbTarget,
+    this.recommendedSleepDuration,
   });
 
   // Метод для создания копии объекта с новыми значениями
@@ -63,6 +65,7 @@ class Profile {
     double? proteinTarget,
     double? fatTarget,
     double? carbTarget,
+    double? recommendedSleepDuration,
   }) {
     return Profile(
       name: name ?? this.name,
@@ -76,6 +79,7 @@ class Profile {
       proteinTarget: proteinTarget ?? this.proteinTarget,
       fatTarget: fatTarget ?? this.fatTarget,
       carbTarget: carbTarget ?? this.carbTarget,
+      recommendedSleepDuration: recommendedSleepDuration ?? this.recommendedSleepDuration,
     );
   }
 } 

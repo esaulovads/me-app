@@ -9,6 +9,9 @@ import '../../nutrition/widgets/nutrition_progress_bar.dart';
 import '../../nutrition/services/nutrition_service.dart';
 import '../../nutrition/models/meal_model.dart';
 import '../../nutrition/nutrition_screen.dart';
+import '../../sleep/services/sleep_service.dart';
+import '../../sleep/widgets/sleep_progress_bar.dart';
+import '../../sleep/sleep_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String userId;
@@ -25,6 +28,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   late final ProfileService _profileService;
   late final NutritionService _nutritionService;
+  late final SleepService _sleepService;
   late final PerformanceService _performanceService;
   late final PerformanceMonitor _performanceMonitor;
   
@@ -33,6 +37,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   DailySummary? _cachedDailySummary;
   String? _cachedAge;
   Map<String, dynamic>? _cachedNutritionData;
+  double? _cachedSleepDuration; // Кэш для продолжительности сна
   
   bool _isLoading = false;
   bool _isInitialized = false;
@@ -41,14 +46,19 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   // Debounce для предотвращения частых обновлений
   Timer? _nutritionUpdateTimer;
   Timer? _profileUpdateTimer;
+  Timer? _sleepUpdateTimer;
 
   @override
   void initState() {
     super.initState();
     _profileService = ProfileService(userId: widget.userId);
     _nutritionService = NutritionService(userId: widget.userId);
+    _sleepService = SleepService(userId: widget.userId);
     _performanceService = PerformanceService();
     _performanceMonitor = PerformanceMonitor();
+    
+    // Очищаем кэш профиля чтобы получить обновленные данные со сна
+    _profileService.clearCache();
     
     // Мониторинг уже инициализирован в main.dart
     _initializeServices();
@@ -58,7 +68,9 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   void dispose() {
     _nutritionUpdateTimer?.cancel();
     _profileUpdateTimer?.cancel();
+    _sleepUpdateTimer?.cancel();
     _nutritionService.dispose();
+    _sleepService.dispose();
     super.dispose();
   }
 
@@ -77,6 +89,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
         await Future.wait([
           _loadProfile(),
           _loadNutritionData(),
+          _loadSleepData(),
         ]);
       });
       
@@ -167,6 +180,34 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             totalFats: 0,
             totalCarbs: 0,
           );
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  // Загрузка данных сна с кэшированием и мониторингом
+  Future<void> _loadSleepData() async {
+    // Отменяем предыдущий таймер если он есть
+    _sleepUpdateTimer?.cancel();
+    
+    _sleepUpdateTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        final sleepDuration = await measureAsyncPerformance('Sleep data loading', () async {
+          return await _sleepService.getTodaySleepDuration();
+        });
+        
+        if (mounted && sleepDuration != _cachedSleepDuration) {
+          _cachedSleepDuration = sleepDuration;
+          
+          measurePerformance('Sleep UI update', () {
+            setState(() {});
+          });
+        }
+      } catch (e) {
+        // Обрабатываем ошибки тихо, используем 0 как fallback
+        if (mounted && _cachedSleepDuration == null) {
+          _cachedSleepDuration = 0.0;
           setState(() {});
         }
       }
@@ -265,8 +306,10 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
                           _cachedProfile = null;
                           _cachedAge = null;
                           _cachedNutritionData = null;
+                          _cachedSleepDuration = null;
                           _loadProfile();
                           _loadNutritionData();
+                          _loadSleepData();
                         }
                       },
                       icon: const Icon(Icons.edit),
@@ -307,6 +350,35 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             _cachedDailySummary = null;
             _cachedNutritionData = null;
             _loadNutritionData();
+          },
+        ),
+      );
+    });
+  }
+
+  // Оптимизированный виджет прогресс-бара сна с мониторингом
+  Widget _buildSleepProgressBar(Profile profile) {
+    return measurePerformance('Sleep progress bar build', () {
+      final recommendedSleepHours = profile.recommendedSleepDuration ?? 8.0;
+      final actualSleepHours = _cachedSleepDuration ?? 0.0;
+
+      return RepaintBoundary(
+        child: SleepProgressBar(
+          actualSleepHours: actualSleepHours,
+          recommendedSleepHours: recommendedSleepHours,
+          onTap: () async {
+            await measureAsyncPerformance('Sleep screen navigation', () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SleepScreen(userId: widget.userId),
+                ),
+              );
+            });
+            
+            // Обновляем данные сна при возвращении
+            _cachedSleepDuration = null;
+            _loadSleepData();
           },
         ),
       );
@@ -368,19 +440,12 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             SliverToBoxAdapter(
               child: _buildNutritionProgressBar(_cachedProfile!),
             ),
+            SliverToBoxAdapter(
+              child: _buildSleepProgressBar(_cachedProfile!),
+            ),
             // Здесь будет остальной контент (активность и т.д.)
-            const SliverFillRemaining(
-              child: RepaintBoundary(
-                child: Center(
-                  child: Text(
-                    'Здесь будет остальной контент',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 24), // Небольшой отступ снизу
             ),
           ],
         ),
@@ -448,12 +513,22 @@ class OptimizedNutritionProgressBar extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Питание',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.restaurant,
+                        color: Colors.orange,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Питание',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   Icon(
                     Icons.arrow_forward_ios,

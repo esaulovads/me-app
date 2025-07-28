@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Headers, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Headers, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { 
   UpdateNameDto, 
@@ -118,5 +118,17 @@ export class ProfileController {
       throw new UnauthorizedException('Требуется авторизация');
     }
     return this.profileService.updateActivityLevel(userId, updateActivityLevelDto);
+  }
+
+  // Принудительный пересчет рекомендуемой продолжительности сна
+  @Post('recalculate-sleep')
+  async recalculateSleepDuration(
+    @Headers('user-id') userId: string,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    return this.profileService.recalculateRecommendedSleepDuration(userId);
   }
 } 

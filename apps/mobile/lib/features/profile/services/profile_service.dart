@@ -38,6 +38,9 @@ class ProfileService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+
+        
         final profile = Profile(
           name: data['name'],
           birthDate: data['birthDate'] != null ? DateTime.parse(data['birthDate']) : null,
@@ -59,7 +62,11 @@ class ProfileService {
           proteinTarget: data['proteinTarget']?.toDouble(),
           fatTarget: data['fatTarget']?.toDouble(),
           carbTarget: data['carbTarget']?.toDouble(),
+          recommendedSleepDuration: data['recommendedSleepDuration']?.toDouble() ?? 
+              _calculateFallbackSleepDuration(data),
         );
+        
+
         
         // Кэшируем результат
         _cachedProfile = profile;
@@ -207,5 +214,64 @@ class ProfileService {
   // Принудительная очистка кэша (для использования извне)
   void clearCache() {
     _clearCache();
+  }
+
+  // Fallback расчет рекомендуемой продолжительности сна
+  double? _calculateFallbackSleepDuration(Map<String, dynamic> data) {
+    try {
+      final gender = data['gender'];
+      final birthDate = data['birthDate'];
+      final activityLevel = data['activityLevel'];
+
+      if (gender == null || birthDate == null || activityLevel == null) {
+        return 8.0; // Базовое значение по умолчанию
+      }
+
+      // Вычисляем возраст
+      final birth = DateTime.parse(birthDate);
+      final age = DateTime.now().difference(birth).inDays ~/ 365;
+
+      // Базовая длительность сна по полу и возрасту
+      double baseSleep;
+      if (gender == 'MALE') {
+        if (age >= 18 && age <= 25) baseSleep = 7.5;
+        else if (age >= 26 && age <= 35) baseSleep = 7.5;
+        else if (age >= 36 && age <= 45) baseSleep = 7.0;
+        else if (age >= 46 && age <= 55) baseSleep = 7.0;
+        else if (age >= 56 && age <= 65) baseSleep = 6.5;
+        else baseSleep = 6.5;
+      } else { // FEMALE
+        if (age >= 18 && age <= 25) baseSleep = 8.0;
+        else if (age >= 26 && age <= 35) baseSleep = 8.0;
+        else if (age >= 36 && age <= 45) baseSleep = 7.5;
+        else if (age >= 46 && age <= 55) baseSleep = 7.5;
+        else if (age >= 56 && age <= 65) baseSleep = 7.0;
+        else baseSleep = 6.5;
+      }
+
+      // Модификатор активности
+      double activityModifier = 0.0;
+      if (activityLevel == 'MODERATELY_ACTIVE') {
+        activityModifier = gender == 'MALE' ? 0.25 : 0.30;
+      } else if (activityLevel == 'VERY_ACTIVE') {
+        activityModifier = gender == 'MALE' ? 0.50 : 0.60;
+      } else if (activityLevel == 'EXTREMELY_ACTIVE') {
+        activityModifier = gender == 'MALE' ? 0.75 : 0.85;
+      }
+
+      // Корректируем модификатор по возрасту
+      if (age >= 36 && age <= 55) {
+        activityModifier *= 0.8; // Уменьшаем на 20%
+      } else if (age >= 56) {
+        activityModifier *= 0.6; // Уменьшаем на 40%
+      }
+
+      final result = baseSleep + activityModifier;
+      print('Fallback sleep calculation: baseSleep=$baseSleep, modifier=$activityModifier, result=$result');
+      return result;
+    } catch (e) {
+      print('Error calculating fallback sleep duration: $e');
+      return 8.0; // Безопасное значение по умолчанию
+    }
   }
 } 
