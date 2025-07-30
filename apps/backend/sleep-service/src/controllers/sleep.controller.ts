@@ -14,6 +14,8 @@ import {
 import { SleepService } from '../services/sleep.service';
 import { CreateSleepSessionDto } from '../dto/create-sleep-session.dto';
 import { UpdateSleepSessionDto } from '../dto/update-sleep-session.dto';
+import { CreateSleepScheduleDto } from '../dto/create-sleep-schedule.dto';
+import { UpdateSleepScheduleDto } from '../dto/update-sleep-schedule.dto';
 
 @Controller('sleep')
 export class SleepController {
@@ -74,6 +76,78 @@ export class SleepController {
     }
 
     return this.sleepService.getTotalSleepDuration(userId, date);
+  }
+
+  // === Эндпоинты для работы с расписанием сна ===
+
+  // Создание или обновление расписания сна
+  @Post('schedule')
+  async createOrUpdateSleepSchedule(
+    @Headers('user-id') userId: string,
+    @Body(ValidationPipe) createSleepScheduleDto: CreateSleepScheduleDto,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    return this.sleepService.createOrUpdateSleepSchedule(userId, createSleepScheduleDto);
+  }
+
+  // Получение расписания сна пользователя
+  @Get('schedule')
+  async getSleepSchedule(@Headers('user-id') userId: string) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    const schedule = await this.sleepService.getSleepSchedule(userId);
+    if (!schedule) {
+      return { message: 'Расписание сна не настроено' };
+    }
+
+    return schedule;
+  }
+
+  // Обновление расписания сна
+  @Put('schedule')
+  async updateSleepSchedule(
+    @Headers('user-id') userId: string,
+    @Body(ValidationPipe) updateSleepScheduleDto: UpdateSleepScheduleDto,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    return this.sleepService.updateSleepSchedule(userId, updateSleepScheduleDto);
+  }
+
+  // Удаление расписания сна
+  @Delete('schedule')
+  async deleteSleepSchedule(@Headers('user-id') userId: string) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    await this.sleepService.deleteSleepSchedule(userId);
+    return { message: 'Расписание сна успешно удалено' };
+  }
+
+  // Получение времени пробуждения на конкретную дату
+  @Get('schedule/wake-time')
+  async getWakeTimeForDate(
+    @Headers('user-id') userId: string,
+    @Query('date') date: string,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    if (!date) {
+      throw new BadRequestException('Параметр date обязателен');
+    }
+
+    const wakeTime = await this.sleepService.getWakeTimeForDate(userId, date);
+    return { date, wakeTime };
   }
 
   // Получение конкретного периода сна

@@ -2,14 +2,19 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { SleepSession } from '../entities/sleep-session.entity';
+import { SleepSchedule } from '../entities/sleep-schedule.entity';
 import { CreateSleepSessionDto } from '../dto/create-sleep-session.dto';
 import { UpdateSleepSessionDto } from '../dto/update-sleep-session.dto';
+import { CreateSleepScheduleDto } from '../dto/create-sleep-schedule.dto';
+import { UpdateSleepScheduleDto } from '../dto/update-sleep-schedule.dto';
 
 @Injectable()
 export class SleepService {
   constructor(
     @InjectRepository(SleepSession)
     private sleepSessionRepository: Repository<SleepSession>,
+    @InjectRepository(SleepSchedule)
+    private sleepScheduleRepository: Repository<SleepSchedule>,
   ) {}
 
   // Создание нового периода сна
@@ -134,5 +139,73 @@ export class SleepService {
     }
 
     return sleepSession;
+  }
+
+  // === Методы для работы с расписанием сна ===
+
+  // Создание или обновление расписания сна пользователя
+  async createOrUpdateSleepSchedule(userId: string, createSleepScheduleDto: CreateSleepScheduleDto): Promise<SleepSchedule> {
+    // Проверяем, есть ли уже расписание у пользователя
+    let sleepSchedule = await this.sleepScheduleRepository.findOne({
+      where: { userId },
+    });
+
+    if (sleepSchedule) {
+      // Обновляем существующее расписание
+      Object.assign(sleepSchedule, createSleepScheduleDto);
+    } else {
+      // Создаем новое расписание
+      sleepSchedule = this.sleepScheduleRepository.create({
+        userId,
+        ...createSleepScheduleDto,
+      });
+    }
+
+    return this.sleepScheduleRepository.save(sleepSchedule);
+  }
+
+  // Получение расписания сна пользователя
+  async getSleepSchedule(userId: string): Promise<SleepSchedule | null> {
+    return this.sleepScheduleRepository.findOne({
+      where: { userId },
+    });
+  }
+
+  // Обновление расписания сна
+  async updateSleepSchedule(userId: string, updateSleepScheduleDto: UpdateSleepScheduleDto): Promise<SleepSchedule> {
+    const sleepSchedule = await this.sleepScheduleRepository.findOne({
+      where: { userId },
+    });
+
+    if (!sleepSchedule) {
+      throw new NotFoundException('Расписание сна не найдено');
+    }
+
+    Object.assign(sleepSchedule, updateSleepScheduleDto);
+    return this.sleepScheduleRepository.save(sleepSchedule);
+  }
+
+  // Удаление расписания сна
+  async deleteSleepSchedule(userId: string): Promise<void> {
+    const result = await this.sleepScheduleRepository.delete({ userId });
+    
+    if (result.affected === 0) {
+      throw new NotFoundException('Расписание сна не найдено');
+    }
+  }
+
+  // Получение времени пробуждения на конкретную дату согласно расписанию
+  async getWakeTimeForDate(userId: string, date: string): Promise<string | null> {
+    const schedule = await this.getSleepSchedule(userId);
+    
+    if (!schedule || !schedule.isEnabled) {
+      return null;
+    }
+
+    // Определяем день недели для указанной даты
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
+
+    return schedule.getWakeTimeForDay(dayOfWeek);
   }
 } 
