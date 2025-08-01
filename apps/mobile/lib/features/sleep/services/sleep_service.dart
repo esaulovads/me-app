@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/sleep_session_model.dart';
 import '../models/sleep_schedule_model.dart';
@@ -6,7 +7,15 @@ import '../models/sleep_schedule_model.dart';
 /// Сервис для работы с данными сна
 class SleepService {
   final String userId;
-  static const String baseUrl = 'http://localhost:3003/sleep'; // Исправлен порт на 3003
+  
+  // В Android эмуляторе localhost это 10.0.2.2
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:3003/sleep';
+    }
+    return 'http://localhost:3003/sleep';
+  }
+  
   static const Duration timeoutDuration = Duration(seconds: 5); // Таймаут для запросов
 
   SleepService({required this.userId});
