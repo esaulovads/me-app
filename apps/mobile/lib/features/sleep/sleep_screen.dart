@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'models/sleep_schedule_model.dart';
 import 'services/sleep_service.dart';
 import 'widgets/sleep_schedule_settings.dart';
+import 'widgets/next_wake_time_display.dart';
+import 'screens/sleep_schedule_edit_screen.dart';
 
 /// Экран управления сном
 class SleepScreen extends StatefulWidget {
@@ -82,6 +84,23 @@ class _SleepScreenState extends State<SleepScreen> {
   /// Обработчик обновления расписания
   void _onScheduleUpdated() {
     _loadCurrentSchedule();
+  }
+
+  /// Открывает экран редактирования расписания
+  Future<void> _openScheduleEditScreen() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => SleepScheduleEditScreen(
+          userId: widget.userId,
+          currentSchedule: _currentSchedule,
+        ),
+      ),
+    );
+
+    // Если расписание было изменено, перезагружаем данные
+    if (result == true) {
+      _loadCurrentSchedule();
+    }
   }
 
   /// Повторная попытка загрузки
@@ -204,13 +223,23 @@ class _SleepScreenState extends State<SleepScreen> {
                       ),
                     ),
                   
-                  // Блок настройки расписания сна (только если сервис доступен)
-                  if (_serviceAvailable)
-                    SleepScheduleSettings(
-                      userId: widget.userId,
-                      currentSchedule: _currentSchedule,
-                      onScheduleUpdated: _onScheduleUpdated,
-                    ),
+                  // Блок расписания сна (только если сервис доступен)
+                  if (_serviceAvailable) ...[
+                    // Если расписание уже настроено, показываем время пробуждения
+                    if (_currentSchedule != null)
+                      NextWakeTimeDisplay(
+                        schedule: _currentSchedule!,
+                        onEditPressed: _openScheduleEditScreen,
+                        userId: widget.userId,
+                      )
+                    // Если расписание не настроено, показываем настройки
+                    else
+                      SleepScheduleSettings(
+                        userId: widget.userId,
+                        currentSchedule: _currentSchedule,
+                        onScheduleUpdated: _onScheduleUpdated,
+                      ),
+                  ],
                   
                   // Заглушка для будущего функционала
                   Card(

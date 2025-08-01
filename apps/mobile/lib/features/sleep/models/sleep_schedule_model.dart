@@ -42,7 +42,7 @@ class SleepSchedule {
       id: json['id'] as String,
       userId: json['userId'] as String,
       scheduleType: ScheduleType.values.firstWhere(
-        (e) => e.name == json['scheduleType'],
+        (e) => e.value == json['scheduleType'],
         orElse: () => ScheduleType.sameTime,
       ),
       mondayWakeTime: json['mondayWakeTime'] as String?,
@@ -66,7 +66,7 @@ class SleepSchedule {
     return {
       'id': id,
       'userId': userId,
-      'scheduleType': scheduleType.name,
+      'scheduleType': scheduleType.value,
       'mondayWakeTime': mondayWakeTime,
       'tuesdayWakeTime': tuesdayWakeTime,
       'wednesdayWakeTime': wednesdayWakeTime,
