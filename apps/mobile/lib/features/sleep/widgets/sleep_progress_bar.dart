@@ -19,7 +19,6 @@ class SleepProgressBar extends StatelessWidget {
     final percentage = recommendedSleepHours > 0
         ? (actualSleepHours / recommendedSleepHours).clamp(0.0, 1.0)
         : 0.0;
-    final percentageInt = (percentage * 100).round();
 
     // Определяем цвет прогресс-бара на основе процента выполнения
     Color progressColor;
@@ -52,83 +51,20 @@ class SleepProgressBar extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              // Заголовок блока
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.bedtime,
-                        color: Colors.indigo,
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Сон',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (onTap != null)
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                ],
+              // Иконка сна (полумесяц)
+              const Icon(
+                Icons.bedtime,
+                color: Colors.indigo,
+                size: 24,
               ),
-              const SizedBox(height: 12),
-
-              // Информация о времени сна
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_formatHours(actualSleepHours)} / ${_formatHours(recommendedSleepHours)}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '$percentageInt%',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: progressColor,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 16),
+              
+              // Улучшенный прогресс-бар с автоматическим заполнением краев
+              Expanded(
+                child: _buildEnhancedProgressBar(percentage, progressColor),
               ),
-              const SizedBox(height: 8),
-
-              // Прогресс-бар
-              Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: percentage,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: progressColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-
-
             ],
           ),
         ),
@@ -146,6 +82,78 @@ class SleepProgressBar extends StatelessWidget {
     } else {
       return '${wholeHours} ч ${minutes} мин';
     }
+  }
+
+  // Строит улучшенный прогресс-бар с автоматическим заполнением краев
+  Widget _buildEnhancedProgressBar(double percentage, Color progressColor) {
+    const double barHeight = 12.0;
+    const double borderRadius = 6.0;
+    const double edgeWidth = 8.0; // Ширина крайних областей
+    
+    // Определяем цвет левой области (всегда заполнена)
+    Color leftEdgeColor = percentage > 0 ? progressColor : Colors.red;
+    
+    // Определяем цвет правой области (заполняется при 100%)
+    Color rightEdgeColor = percentage >= 1.0 ? Colors.green : Colors.grey[200]!;
+    
+    return Container(
+      height: barHeight,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: Colors.grey[400]!,
+          width: 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius - 1),
+        child: Row(
+          children: [
+            // Левая область - всегда заполнена
+            Container(
+              width: edgeWidth,
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: leftEdgeColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(borderRadius - 1),
+                  bottomLeft: Radius.circular(borderRadius - 1),
+                ),
+              ),
+            ),
+            
+            // Средняя область - динамически заполняется
+            Expanded(
+              child: Container(
+                height: barHeight,
+                color: Colors.grey[200],
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: percentage.clamp(0.0, 1.0),
+                  child: Container(
+                    color: progressColor,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Правая область - заполняется при 100%
+            Container(
+              width: edgeWidth,
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: rightEdgeColor,
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(borderRadius - 1),
+                  bottomRight: Radius.circular(borderRadius - 1),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
 

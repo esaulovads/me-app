@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../models/profile_model.dart';
 import '../services/profile_service.dart';
 import '../services/performance_service.dart';
@@ -112,9 +113,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     
     _profileUpdateTimer = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final profile = await measureAsyncPerformance('Profile loading', () async {
-          return await _profileService.getProfile();
-        });
+        final profile = await _profileService.getProfile();
         
         if (mounted && profile != _cachedProfile) {
           _cachedProfile = profile;
@@ -122,9 +121,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
           
           // Вычисляем возраст в изоляте с мониторингом
           if (profile.birthDate != null) {
-            _cachedAge = await measureAsyncPerformance('Age calculation', () async {
-              return await _performanceService.calculateAge(profile.birthDate);
-            });
+            _cachedAge = await _performanceService.calculateAge(profile.birthDate);
           }
           
           measurePerformance('Profile UI update', () {
@@ -150,9 +147,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     
     _nutritionUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
       try {
-        final summary = await measureAsyncPerformance('Nutrition data loading', () async {
-          return await _nutritionService.getTodaySummary();
-        });
+        final summary = await _nutritionService.getTodaySummary();
         
         if (mounted && summary != _cachedDailySummary) {
           _cachedDailySummary = summary;
@@ -186,6 +181,77 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     });
   }
 
+  // Запланированная асинхронная перезагрузка для разгрузки UI потока
+  void _scheduleSmartReload() {
+    // Используем microtask для выполнения в следующем цикле событий
+    scheduleMicrotask(() async {
+      await _smartReloadAfterProfileEdit();
+    });
+  }
+
+  // Умная перезагрузка данных после редактирования профиля
+  Future<void> _smartReloadAfterProfileEdit() async {
+    try {
+      // Сохраняем текущий профиль для сравнения
+      final previousProfile = _cachedProfile;
+      
+      // Загружаем обновленный профиль без блокировки UI
+      _cachedProfile = null;
+      _cachedAge = null;
+      
+      // Ждем один фрейм для отрисовки UI
+      await SchedulerBinding.instance.endOfFrame;
+      await _loadProfile();
+      
+      // Проверяем, изменились ли поля, влияющие на расчеты питания
+      final shouldReloadNutrition = previousProfile == null ||
+          previousProfile.tdee != _cachedProfile?.tdee ||
+          previousProfile.goal != _cachedProfile?.goal ||
+          previousProfile.height != _cachedProfile?.height ||
+          previousProfile.weight != _cachedProfile?.weight ||
+          previousProfile.activityLevel != _cachedProfile?.activityLevel;
+      
+      // Проверяем, изменились ли поля, влияющие на рекомендации сна
+      final shouldReloadSleep = previousProfile == null ||
+          previousProfile.recommendedSleepDuration != _cachedProfile?.recommendedSleepDuration ||
+          previousProfile.gender != _cachedProfile?.gender ||
+          previousProfile.birthDate != _cachedProfile?.birthDate ||
+          previousProfile.activityLevel != _cachedProfile?.activityLevel;
+      
+      // Перезагружаем только необходимые данные асинхронно
+      if (shouldReloadNutrition) {
+        _cachedDailySummary = null;
+        _cachedNutritionData = null;
+        _loadNutritionData(); // Запускаем асинхронно
+      } else if (_cachedDailySummary == null) {
+        // Если данные питания не были загружены, загружаем их
+        _loadNutritionData(); // Запускаем асинхронно
+      }
+      
+      if (shouldReloadSleep) {
+        _cachedSleepDuration = null;
+        _loadSleepData(); // Запускаем асинхронно
+      } else if (_cachedSleepDuration == null) {
+        // Если данные сна не были загружены, загружаем их
+        _loadSleepData(); // Запускаем асинхронно
+      }
+      
+      debugPrint('Умная перезагрузка: питание=${shouldReloadNutrition ? "обновлено" : "сохранено"}, сон=${shouldReloadSleep ? "обновлено" : "сохранено"}');
+      
+    } catch (e) {
+      debugPrint('Ошибка умной перезагрузки: $e');
+      // В случае ошибки выполняем полную перезагрузку
+      _cachedProfile = null;
+      _cachedAge = null;
+      _cachedNutritionData = null;
+      _cachedDailySummary = null;
+      _cachedSleepDuration = null;
+      _loadProfile();
+      _loadNutritionData();
+      _loadSleepData();
+    }
+  }
+
   // Загрузка данных сна с кэшированием и мониторингом
   Future<void> _loadSleepData() async {
     // Отменяем предыдущий таймер если он есть
@@ -193,9 +259,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     
     _sleepUpdateTimer = Timer(const Duration(milliseconds: 400), () async {
       try {
-        final sleepDuration = await measureAsyncPerformance('Sleep data loading', () async {
-          return await _sleepService.getTodaySleepDuration();
-        });
+        final sleepDuration = await _sleepService.getTodaySleepDuration();
         
         if (mounted && sleepDuration != _cachedSleepDuration) {
           _cachedSleepDuration = sleepDuration;
@@ -289,27 +353,20 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
                   child: RepaintBoundary(
                     child: IconButton(
                       onPressed: () async {
-                        final result = await measureAsyncPerformance('Edit profile navigation', () async {
-                          return await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditProfileScreen(
-                                userId: widget.userId,
-                                initialProfile: profile,
-                              ),
+                        // Быстрая навигация без мониторинга производительности  
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditProfileScreen(
+                              userId: widget.userId,
+                              initialProfile: profile,
                             ),
-                          );
-                        });
+                          ),
+                        );
                         
                         if (result == true) {
-                          // Сбрасываем кэш и перезагружаем данные
-                          _cachedProfile = null;
-                          _cachedAge = null;
-                          _cachedNutritionData = null;
-                          _cachedSleepDuration = null;
-                          _loadProfile();
-                          _loadNutritionData();
-                          _loadSleepData();
+                          // Асинхронная перезагрузка без блокировки UI
+                          _scheduleSmartReload();
                         }
                       },
                       icon: const Icon(Icons.edit),
@@ -506,82 +563,94 @@ class OptimizedNutritionProgressBar extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              // Заголовок блока
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.restaurant,
-                        color: Colors.orange,
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Питание',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.grey[600],
-                  ),
-                ],
+              // Иконка питания
+              const Icon(
+                Icons.restaurant,
+                color: Colors.orange,
+                size: 24,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(width: 16),
               
-              // Информация о калориях
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${consumedCalories.toInt()} / ${targetCalories.toInt()} ккал',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '$percentageInt%',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: progressColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              
-              // Прогресс-бар
-              Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: percentage,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: progressColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
+              // Улучшенный прогресс-бар с автоматическим заполнением краев
+              Expanded(
+                child: _buildEnhancedProgressBar(percentage, progressColor),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Строит улучшенный прогресс-бар с автоматическим заполнением краев
+  Widget _buildEnhancedProgressBar(double percentage, Color progressColor) {
+    const double barHeight = 12.0;
+    const double borderRadius = 6.0;
+    const double edgeWidth = 8.0; // Ширина крайних областей
+    
+    // Определяем цвет левой области (всегда заполнена)
+    Color leftEdgeColor = percentage > 0 ? progressColor : Colors.red;
+    
+    // Определяем цвет правой области (заполняется при 100%)
+    Color rightEdgeColor = percentage >= 1.0 ? Colors.green : Colors.grey[200]!;
+    
+    return Container(
+      height: barHeight,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: Colors.grey[400]!,
+          width: 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius - 1),
+        child: Row(
+          children: [
+            // Левая область - всегда заполнена
+            Container(
+              width: edgeWidth,
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: leftEdgeColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(borderRadius - 1),
+                  bottomLeft: Radius.circular(borderRadius - 1),
+                ),
+              ),
+            ),
+            
+            // Средняя область - динамически заполняется
+            Expanded(
+              child: Container(
+                height: barHeight,
+                color: Colors.grey[200],
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: percentage.clamp(0.0, 1.0),
+                  child: Container(
+                    color: progressColor,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Правая область - заполняется при 100%
+            Container(
+              width: edgeWidth,
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: rightEdgeColor,
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(borderRadius - 1),
+                  bottomRight: Radius.circular(borderRadius - 1),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
