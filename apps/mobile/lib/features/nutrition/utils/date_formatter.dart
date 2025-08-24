@@ -6,6 +6,11 @@ class DateFormatter {
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
   ];
 
+  // Названия дней недели на русском языке
+  static const List<String> _dayNames = [
+    'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'
+  ];
+
   // Форматирование даты с учетом относительного положения к сегодняшнему дню
   static String formatDateRelative(DateTime date) {
     final today = DateTime.now();
@@ -25,14 +30,21 @@ class DateFormatter {
     } else if (dateOnly == tomorrowOnly) {
       return 'Завтра: ${_formatDate(date)}';
     } else {
-      // Для остальных дат показываем только дату без префикса
-      return _formatDate(date);
+      // Для остальных дат показываем день недели и дату
+      return _formatDateWithDayName(date);
     }
   }
 
   // Базовое форматирование даты в формате "13 июля"
   static String _formatDate(DateTime date) {
     return '${date.day} ${_monthNames[date.month - 1]}';
+  }
+
+  // Форматирование даты с днем недели в формате "Среда: 20 августа"
+  static String _formatDateWithDayName(DateTime date) {
+    final dayName = _dayNames[date.weekday - 1]; // weekday: 1=понедельник, 7=воскресенье
+    final formattedDate = _formatDate(date);
+    return '$dayName: $formattedDate';
   }
 
   // Проверка, является ли дата сегодняшней

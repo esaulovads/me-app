@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'models/sleep_schedule_model.dart';
+import 'models/sleep_session_model.dart';
 import 'services/sleep_service.dart';
 import 'widgets/sleep_schedule_settings.dart';
 import 'widgets/next_wake_time_display.dart';
 import 'screens/sleep_schedule_edit_screen.dart';
+import '../nutrition/widgets/date_navigation_header.dart';
 
 /// Экран управления сном
 class SleepScreen extends StatefulWidget {
@@ -18,18 +21,39 @@ class SleepScreen extends StatefulWidget {
   State<SleepScreen> createState() => _SleepScreenState();
 }
 
-class _SleepScreenState extends State<SleepScreen> {
+class _SleepScreenState extends State<SleepScreen>
+    with AutomaticKeepAliveClientMixin { // Сохраняем состояние экрана
   late SleepService _sleepService;
   SleepSchedule? _currentSchedule;
+  DateTime _selectedDate = DateTime.now(); // Выбранная дата для просмотра данных сна
+  
+  // Кэш для данных сна
+  final Map<String, List<SleepSession>> _sleepSessionsCache = {};
+  final Map<String, double> _sleepDurationCache = {};
+  
   bool _isLoading = true;
   String? _errorMessage;
   bool _serviceAvailable = true;
+  
+  // Debounce для предотвращения частых запросов при быстрой смене дат
+  Timer? _debounceTimer;
 
+  @override
+  bool get wantKeepAlive => true; // Сохраняем состояние экрана
+  
   @override
   void initState() {
     super.initState();
     _sleepService = SleepService(userId: widget.userId);
     _loadCurrentSchedule();
+    _loadDataForDate(_selectedDate); // Загружаем данные сна для выбранной даты
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _sleepService.dispose();
+    super.dispose();
   }
 
   /// Загружает текущее расписание сна с быстрой проверкой доступности сервиса
@@ -86,6 +110,113 @@ class _SleepScreenState extends State<SleepScreen> {
     _loadCurrentSchedule();
   }
 
+  // === Методы для работы с датами и данными сна ===
+
+  /// Ленивая загрузка данных сна для выбранной даты
+  Future<void> _loadDataForDate(DateTime date, {bool forceReload = false}) async {
+    final dateKey = _formatDateKey(date);
+    
+    // Если данные уже в кэше и не требуется принудительная перезагрузка, не загружаем повторно
+    if (!forceReload && _sleepSessionsCache.containsKey(dateKey) && _sleepDurationCache.containsKey(dateKey)) {
+      return;
+    }
+
+    // Отменяем предыдущий таймер
+    _debounceTimer?.cancel();
+    
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      if (!mounted) return;
+      
+      try {
+        final dateString = dateKey; // Используем тот же формат
+        
+        // Загружаем данные параллельно
+        final results = await Future.wait([
+          _sleepService.getSleepSessionsByDate(dateString),
+          _sleepService.getTotalSleepDuration(dateString),
+        ]);
+
+        if (mounted) {
+          // Кэшируем результаты
+          _sleepSessionsCache[dateKey] = results[0] as List<SleepSession>;
+          _sleepDurationCache[dateKey] = results[1] as double;
+          
+          // Обновляем состояние, только если это текущая дата
+          if (_formatDateKey(_selectedDate) == dateKey) {
+            setState(() {
+              // Триггерим обновление интерфейса
+            });
+          }
+        }
+      } catch (e) {
+        print('Ошибка загрузки данных сна для $dateKey: $e');
+        // В случае ошибки устанавливаем пустые данные
+        if (mounted) {
+          _sleepSessionsCache[dateKey] = [];
+          _sleepDurationCache[dateKey] = 0.0;
+        }
+      }
+    });
+  }
+
+  /// Форматирование даты для ключа кэша
+  String _formatDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Переход к предыдущему дню
+  void _goToPreviousDay() {
+    final newDate = _selectedDate.subtract(const Duration(days: 1));
+    setState(() {
+      _selectedDate = newDate;
+    });
+    _loadDataForDate(newDate);
+  }
+
+  /// Переход к следующему дню
+  void _goToNextDay() {
+    final newDate = _selectedDate.add(const Duration(days: 1));
+    setState(() {
+      _selectedDate = newDate;
+    });
+    _loadDataForDate(newDate);
+  }
+
+  /// Открытие датапикера для выбора конкретной даты
+  Future<void> _selectDate() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      locale: const Locale('ru', 'RU'),
+      helpText: 'Выберите дату',
+      cancelText: 'Отмена',
+      confirmText: 'Выбрать',
+    );
+
+    if (pickedDate != null && pickedDate != _selectedDate) {
+      setState(() {
+        _selectedDate = pickedDate;
+      });
+      _loadDataForDate(pickedDate);
+    }
+  }
+
+  /// Получение кэшированных сессий сна для выбранной даты
+  List<SleepSession> _getCachedSleepSessions() {
+    final dateKey = _formatDateKey(_selectedDate);
+    return _sleepSessionsCache[dateKey] ?? [];
+  }
+
+  /// Получение кэшированной продолжительности сна для выбранной даты
+  double _getCachedSleepDuration() {
+    final dateKey = _formatDateKey(_selectedDate);
+    return _sleepDurationCache[dateKey] ?? 0.0;
+  }
+
+
+
   /// Открывает экран редактирования расписания
   Future<void> _openScheduleEditScreen() async {
     final result = await Navigator.of(context).push<bool>(
@@ -110,10 +241,188 @@ class _SleepScreenState extends State<SleepScreen> {
       _errorMessage = null;
     });
     _loadCurrentSchedule();
+    _loadDataForDate(_selectedDate, forceReload: true);
+  }
+
+  /// Виджет для отображения данных сна за выбранную дату
+  Widget _buildSleepDataContent() {
+    final sleepSessions = _getCachedSleepSessions();
+    final totalDuration = _getCachedSleepDuration();
+    
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          // Карточка с общей информацией о сне за день
+          Card(
+            margin: const EdgeInsets.all(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.bedtime, color: Colors.indigo),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Сон за ${_selectedDate.day}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Общая продолжительность сна
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Общая продолжительность: ${totalDuration.toStringAsFixed(1)} ч',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Количество периодов сна
+                  Row(
+                    children: [
+                      const Icon(Icons.hotel, color: Colors.purple),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Периодов сна: ${sleepSessions.length}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  
+
+                ],
+              ),
+            ),
+          ),
+          
+          // Список периодов сна
+          if (sleepSessions.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Периоды сна',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            
+            ...sleepSessions.map((session) => _buildSleepSessionCard(session)).toList(),
+          ] else ...[
+            // Пустое состояние
+            const Card(
+              margin: EdgeInsets.all(16),
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.bedtime_outlined,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Нет данных о сне',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'За выбранную дату нет записей о сне',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Карточка для отображения отдельной сессии сна
+  Widget _buildSleepSessionCard(SleepSession session) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // Иконка
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.indigo.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.hotel,
+                color: Colors.indigo,
+                size: 20,
+              ),
+            ),
+            
+            const SizedBox(width: 12),
+            
+            // Информация о сессии
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${session.sleepTime.hour.toString().padLeft(2, '0')}:${session.sleepTime.minute.toString().padLeft(2, '0')} — ${session.wakeTime.hour.toString().padLeft(2, '0')}:${session.wakeTime.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Продолжительность: ${session.durationHours.toStringAsFixed(1)} ч',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Необходимо для AutomaticKeepAliveClientMixin
     return Scaffold(
       appBar: AppBar(
         title: const Text('Сон'),
@@ -127,7 +436,7 @@ class _SleepScreenState extends State<SleepScreen> {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('Загрузка расписания сна...'),
+                Text('Загрузка данных сна...'),
               ],
             ),
           )
@@ -175,114 +484,96 @@ class _SleepScreenState extends State<SleepScreen> {
                 ),
               ),
             )
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Показываем уведомление если сервис недоступен
-                  if (!_serviceAvailable)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        border: Border.all(color: Colors.orange.shade200),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.orange.shade600),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+          : Column(
+              children: [
+                // Заголовок с навигацией по датам
+                RepaintBoundary(
+                  child: DateNavigationHeader(
+                    selectedDate: _selectedDate,
+                    onPreviousDay: _goToPreviousDay,
+                    onNextDay: _goToNextDay,
+                    onDateTap: _selectDate,
+                  ),
+                ),
+                
+                // Основное содержимое экрана
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Показываем уведомление если сервис недоступен
+                        if (!_serviceAvailable)
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              border: Border.all(color: Colors.orange.shade200),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
                               children: [
-                                Text(
-                                  'Расписание сна временно недоступно',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange.shade700,
+                                Icon(Icons.info_outline, color: Colors.orange.shade600),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Расписание сна временно недоступно',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Функция настройки расписания будет доступна после обновления сервиса.',
+                                        style: TextStyle(
+                                          color: Colors.orange.shade600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Функция настройки расписания будет доступна после обновления сервиса.',
-                                  style: TextStyle(
-                                    color: Colors.orange.shade600,
-                                    fontSize: 14,
-                                  ),
+                                TextButton(
+                                  onPressed: _retry,
+                                  child: const Text('Обновить'),
                                 ),
                               ],
                             ),
                           ),
-                          TextButton(
-                            onPressed: _retry,
-                            child: const Text('Обновить'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  
-                  // Блок расписания сна (только если сервис доступен)
-                  if (_serviceAvailable) ...[
-                    // Если расписание уже настроено, показываем время пробуждения
-                    if (_currentSchedule != null)
-                      NextWakeTimeDisplay(
-                        schedule: _currentSchedule!,
-                        onEditPressed: _openScheduleEditScreen,
-                        userId: widget.userId,
-                      )
-                    // Если расписание не настроено, показываем настройки
-                    else
-                      SleepScheduleSettings(
-                        userId: widget.userId,
-                        currentSchedule: _currentSchedule,
-                        onScheduleUpdated: _onScheduleUpdated,
-                      ),
-                  ],
-                  
-                  // Заглушка для будущего функционала
-                  Card(
-                    margin: const EdgeInsets.all(16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.bedtime, color: Colors.indigo),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Записи сна',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Здесь будет возможность просматривать\nи управлять записями о сне',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
+                        
+                        // Блок расписания сна (только если сервис доступен)
+                        if (_serviceAvailable) ...[
+                          // Если расписание уже настроено, показываем время пробуждения
+                          if (_currentSchedule != null)
+                            NextWakeTimeDisplay(
+                              schedule: _currentSchedule!,
+                              onEditPressed: _openScheduleEditScreen,
+                              userId: widget.userId,
+                              selectedDate: _selectedDate, // Передаем выбранную дату
+                            )
+                          // Если расписание не настроено, показываем настройки
+                          else
+                            SleepScheduleSettings(
+                              userId: widget.userId,
+                              currentSchedule: _currentSchedule,
+                              onScheduleUpdated: _onScheduleUpdated,
                             ),
-                          ),
                         ],
-                      ),
+                        
+                        // Данные сна за выбранную дату
+                        _buildSleepDataContent(),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
     );
   }
 
-  @override
-  void dispose() {
-    _sleepService.dispose();
-    super.dispose();
-  }
 } 
