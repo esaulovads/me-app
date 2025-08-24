@@ -3,17 +3,19 @@ import '../models/sleep_schedule_model.dart';
 import '../../profile/services/profile_service.dart';
 import '../../profile/models/profile_model.dart';
 
-/// Виджет для отображения планируемого времени завтрашнего пробуждения
+/// Виджет для отображения планируемого времени пробуждения и засыпания
 class NextWakeTimeDisplay extends StatefulWidget {
   final SleepSchedule schedule;
   final VoidCallback onEditPressed;
   final String userId;
+  final DateTime selectedDate; // Добавляем выбранную дату
 
   const NextWakeTimeDisplay({
     Key? key,
     required this.schedule,
     required this.onEditPressed,
     required this.userId,
+    required this.selectedDate, // Обязательный параметр
   }) : super(key: key);
 
   @override
@@ -53,18 +55,19 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
     }
   }
 
-  /// Получает время пробуждения на завтра
-  String? _getTomorrowWakeTime() {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final tomorrowWeekday = tomorrow.weekday; // 1 = понедельник, 7 = воскресенье
-    return widget.schedule.getWakeTimeForDay(tomorrowWeekday);
+  /// Получает время пробуждения на следующий день от выбранной даты
+  String? _getNextDayWakeTime() {
+    final nextDay = widget.selectedDate.add(const Duration(days: 1));
+    final nextDayWeekday = nextDay.weekday; // 1 = понедельник, 7 = воскресенье
+    return widget.schedule.getWakeTimeForDay(nextDayWeekday);
   }
 
-  /// Рассчитывает рекомендуемое время засыпания
+  /// Рассчитывает рекомендуемое время засыпания для выбранной даты
   String? _getRecommendedBedtime() {
     if (_recommendedSleepDuration == null) return null;
     
-    final wakeTimeString = _getTomorrowWakeTime();
+    // Получаем время пробуждения на следующий день от выбранной даты
+    final wakeTimeString = _getNextDayWakeTime();
     if (wakeTimeString == null) return null;
     
     try {
@@ -73,9 +76,9 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
         final wakeHour = int.parse(parts[0]);
         final wakeMinute = int.parse(parts[1]);
         
-        // Создаем время пробуждения на завтра
-        final tomorrow = DateTime.now().add(const Duration(days: 1));
-        final wakeTime = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, wakeHour, wakeMinute);
+        // Создаем время пробуждения на следующий день от выбранной даты
+        final nextDay = widget.selectedDate.add(const Duration(days: 1));
+        final wakeTime = DateTime(nextDay.year, nextDay.month, nextDay.day, wakeHour, wakeMinute);
         
         // Вычитаем рекомендуемую продолжительность сна
         final sleepDurationMinutes = (_recommendedSleepDuration! * 60).round();
@@ -90,9 +93,9 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
     return null;
   }
 
-  /// Получает название завтрашнего дня
-  String _getTomorrowDayName() {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
+  /// Получает название следующего дня от выбранной даты
+  String _getNextDayName() {
+    final nextDay = widget.selectedDate.add(const Duration(days: 1));
     const dayNames = [
       'понедельник',
       'вторник', 
@@ -102,7 +105,21 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
       'субботу',
       'воскресенье'
     ];
-    return dayNames[tomorrow.weekday - 1];
+    return dayNames[nextDay.weekday - 1];
+  }
+
+  /// Получает название выбранной даты для отображения
+  String _getSelectedDateName() {
+    final today = DateTime.now();
+    final isToday = widget.selectedDate.year == today.year && 
+                   widget.selectedDate.month == today.month && 
+                   widget.selectedDate.day == today.day;
+    
+    if (isToday) {
+      return 'сегодня вечером';
+    } else {
+      return '${widget.selectedDate.day}.${widget.selectedDate.month.toString().padLeft(2, '0')}.${widget.selectedDate.year}';
+    }
   }
 
   /// Форматирует время для отображения
@@ -177,9 +194,10 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
       );
     }
 
-    final tomorrowWakeTime = _getTomorrowWakeTime();
-    final tomorrowDayName = _getTomorrowDayName();
-    final displayWakeTime = _formatDisplayTime(tomorrowWakeTime);
+    final nextDayWakeTime = _getNextDayWakeTime();
+    final nextDayName = _getNextDayName();
+    final selectedDateName = _getSelectedDateName();
+    final displayWakeTime = _formatDisplayTime(nextDayWakeTime);
     final recommendedBedtime = _getRecommendedBedtime();
     final displayBedtime = _formatDisplayTime(recommendedBedtime);
 
@@ -256,7 +274,7 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'сегодня вечером',
+                      selectedDateName,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.purple.shade600,
@@ -323,7 +341,7 @@ class _NextWakeTimeDisplayState extends State<NextWakeTimeDisplay> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Пробуждение завтра в $tomorrowDayName: ',
+                      'Пробуждение в $nextDayName: ',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.indigo.shade700,
