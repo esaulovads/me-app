@@ -65,6 +65,23 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     _initializeServices();
   }
 
+  bool _hasDidChangeDependenciesRunOnceBefore = false;
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Обновляем данные сна только при первом запуске или явном возвращении на экран
+    if (_isInitialized && !_hasDidChangeDependenciesRunOnceBefore) {
+      _hasDidChangeDependenciesRunOnceBefore = true;
+      // Задержка для предотвращения частых обновлений
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _loadSleepData();
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
     _nutritionUpdateTimer?.cancel();
@@ -257,7 +274,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     // Отменяем предыдущий таймер если он есть
     _sleepUpdateTimer?.cancel();
     
-    _sleepUpdateTimer = Timer(const Duration(milliseconds: 400), () async {
+    _sleepUpdateTimer = Timer(const Duration(milliseconds: 800), () async { // Увеличиваем debounce
       try {
         final sleepDuration = await _sleepService.getTodaySleepDuration();
         
