@@ -76,6 +76,95 @@ class SleepService {
     return getTotalSleepDuration(today);
   }
 
+  /// Создает новый период сна
+  Future<SleepSession?> createSleepSession({
+    required DateTime sleepTime,
+    required DateTime wakeTime,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {
+          'user-id': userId,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'sleepTime': sleepTime.toIso8601String(),
+          'wakeTime': wakeTime.toIso8601String(),
+        }),
+      ).timeout(timeoutDuration);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return SleepSession.fromJson(data);
+      } else {
+        print('Ошибка создания периода сна: ${response.statusCode}');
+        print('Ответ сервера: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Ошибка запроса создания периода сна: $e');
+      return null;
+    }
+  }
+
+  /// Обновляет существующий период сна
+  Future<SleepSession?> updateSleepSession({
+    required String sessionId,
+    required DateTime sleepTime,
+    required DateTime wakeTime,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/$sessionId'),
+        headers: {
+          'user-id': userId,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'sleepTime': sleepTime.toIso8601String(),
+          'wakeTime': wakeTime.toIso8601String(),
+        }),
+      ).timeout(timeoutDuration);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return SleepSession.fromJson(data);
+      } else {
+        print('Ошибка обновления периода сна: ${response.statusCode}');
+        print('Ответ сервера: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Ошибка запроса обновления периода сна: $e');
+      return null;
+    }
+  }
+
+  /// Удаляет период сна
+  Future<bool> deleteSleepSession(String sessionId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$sessionId'),
+        headers: {
+          'user-id': userId,
+          'Content-Type': 'application/json',
+        },
+      ).timeout(timeoutDuration);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Ошибка удаления периода сна: ${response.statusCode}');
+        print('Ответ сервера: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Ошибка запроса удаления периода сна: $e');
+      return false;
+    }
+  }
+
   // === Методы для работы с расписанием сна ===
 
   /// Создает или обновляет расписание сна

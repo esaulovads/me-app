@@ -5,6 +5,7 @@ import 'models/sleep_session_model.dart';
 import 'services/sleep_service.dart';
 import 'widgets/sleep_schedule_settings.dart';
 import 'widgets/next_wake_time_display.dart';
+import 'widgets/add_sleep_period_modal.dart';
 import 'screens/sleep_schedule_edit_screen.dart';
 import '../nutrition/widgets/date_navigation_header.dart';
 
@@ -124,7 +125,7 @@ class _SleepScreenState extends State<SleepScreen>
     // Отменяем предыдущий таймер
     _debounceTimer?.cancel();
     
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async { // Увеличил debounce до 500ms
       if (!mounted) return;
       
       try {
@@ -141,11 +142,14 @@ class _SleepScreenState extends State<SleepScreen>
           _sleepSessionsCache[dateKey] = results[0] as List<SleepSession>;
           _sleepDurationCache[dateKey] = results[1] as double;
           
-          // Обновляем состояние, только если это текущая дата
+          // Минимальное обновление состояния, только если это текущая дата
           if (_formatDateKey(_selectedDate) == dateKey) {
-            setState(() {
-              // Триггерим обновление интерфейса
-            });
+            // Используем минимальный setState для конкретного обновления
+            if (mounted) {
+              setState(() {
+                // Только триггерим изменение, без лишних пересчетов
+              });
+            }
           }
         }
       } catch (e) {
@@ -244,6 +248,193 @@ class _SleepScreenState extends State<SleepScreen>
     _loadDataForDate(_selectedDate, forceReload: true);
   }
 
+  /// Открывает модалку для добавления нового периода сна
+  Future<void> _openAddSleepPeriodModal() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AddSleepPeriodModal(
+        selectedDate: _selectedDate,
+        onSave: _createOrUpdateSleepPeriod,
+      ),
+    );
+
+    // Если период был успешно создан, обновляем данные
+    if (result == true) {
+      // Очищаем кэш для принудительной перезагрузки
+      final dateKey = _formatDateKey(_selectedDate);
+      _sleepSessionsCache.remove(dateKey);
+      _sleepDurationCache.remove(dateKey);
+      
+      _loadDataForDate(_selectedDate, forceReload: true);
+    }
+  }
+
+  /// Открывает модалку для редактирования периода сна
+  Future<void> _openEditSleepPeriodModal(SleepSession session) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AddSleepPeriodModal(
+        selectedDate: _selectedDate,
+        onSave: _createOrUpdateSleepPeriod,
+        existingSession: session,
+      ),
+    );
+
+    // Если период был успешно обновлен, обновляем данные
+    if (result == true) {
+      // Очищаем кэш для принудительной перезагрузки
+      final dateKey = _formatDateKey(_selectedDate);
+      _sleepSessionsCache.remove(dateKey);
+      _sleepDurationCache.remove(dateKey);
+      
+      _loadDataForDate(_selectedDate, forceReload: true);
+    }
+  }
+
+  /// Создает новый период сна или обновляет существующий
+  Future<void> _createOrUpdateSleepPeriod(DateTime sleepTime, DateTime wakeTime, [String? sessionId]) async {
+    try {
+      SleepSession? sleepSession;
+      
+      if (sessionId != null) {
+        // Обновляем существующий период
+        sleepSession = await _sleepService.updateSleepSession(
+          sessionId: sessionId,
+          sleepTime: sleepTime,
+          wakeTime: wakeTime,
+        );
+        
+        if (sleepSession != null) {
+          print('Период сна успешно обновлен: ${sleepSession.durationHours.toStringAsFixed(1)} ч');
+        } else {
+          throw Exception('Не удалось обновить период сна');
+        }
+      } else {
+        // Создаем новый период
+        sleepSession = await _sleepService.createSleepSession(
+          sleepTime: sleepTime,
+          wakeTime: wakeTime,
+        );
+        
+        if (sleepSession != null) {
+          print('Период сна успешно создан: ${sleepSession.durationHours.toStringAsFixed(1)} ч');
+        } else {
+          throw Exception('Не удалось создать период сна');
+        }
+      }
+    } catch (e) {
+      print('Ошибка создания/обновления периода сна: $e');
+      rethrow; // Передаем ошибку в модалку для отображения
+    }
+  }
+
+  /// Удаляет период сна с подтверждением
+  Future<void> _deleteSleepPeriod(SleepSession session) async {
+    // Показываем диалог подтверждения
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удаление периода сна'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Вы уверены, что хотите удалить этот период сна?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${session.sleepTime.hour.toString().padLeft(2, '0')}:${session.sleepTime.minute.toString().padLeft(2, '0')} — ${session.wakeTime.hour.toString().padLeft(2, '0')}:${session.wakeTime.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Продолжительность: ${session.durationHours.toStringAsFixed(1)} ч',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Это действие нельзя отменить.',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _sleepService.deleteSleepSession(session.id);
+        
+        if (success) {
+          print('Период сна успешно удален');
+          // Очищаем кэш для принудительной перезагрузки
+          final dateKey = _formatDateKey(_selectedDate);
+          _sleepSessionsCache.remove(dateKey);
+          _sleepDurationCache.remove(dateKey);
+          
+          // Обновляем данные
+          _loadDataForDate(_selectedDate, forceReload: true);
+          
+          // Показываем уведомление об успехе
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Период сна удален'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          throw Exception('Не удалось удалить период сна');
+        }
+      } catch (e) {
+        print('Ошибка удаления периода сна: $e');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка удаления: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   /// Виджет для отображения данных сна за выбранную дату
   Widget _buildSleepDataContent() {
     final sleepSessions = _getCachedSleepSessions();
@@ -301,6 +492,25 @@ class _SleepScreenState extends State<SleepScreen>
                     ],
                   ),
                   
+                  const SizedBox(height: 16),
+                  
+                  // Кнопка добавления периода сна
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _openAddSleepPeriodModal,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Добавить период сна'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
 
                 ],
               ),
@@ -326,20 +536,20 @@ class _SleepScreenState extends State<SleepScreen>
             ...sleepSessions.map((session) => _buildSleepSessionCard(session)).toList(),
           ] else ...[
             // Пустое состояние
-            const Card(
-              margin: EdgeInsets.all(16),
+            Card(
+              margin: const EdgeInsets.all(16),
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.bedtime_outlined,
                         size: 64,
                         color: Colors.grey,
                       ),
-                      SizedBox(height: 16),
-                      Text(
+                      const SizedBox(height: 16),
+                      const Text(
                         'Нет данных о сне',
                         style: TextStyle(
                           fontSize: 18,
@@ -347,14 +557,31 @@ class _SleepScreenState extends State<SleepScreen>
                           color: Colors.grey,
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
+                      const SizedBox(height: 8),
+                      const Text(
                         'За выбранную дату нет записей о сне',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey,
                         ),
                         textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _openAddSleepPeriodModal,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Добавить период сна'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -369,12 +596,13 @@ class _SleepScreenState extends State<SleepScreen>
 
   /// Карточка для отображения отдельной сессии сна
   Widget _buildSleepSessionCard(SleepSession session) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
+    return RepaintBoundary( // Добавляем RepaintBoundary для изоляции перерисовок
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
             // Иконка
             Container(
               padding: const EdgeInsets.all(8),
@@ -414,9 +642,42 @@ class _SleepScreenState extends State<SleepScreen>
                 ],
               ),
             ),
+            
+            // Кнопки действий
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Кнопка редактирования
+                IconButton(
+                  onPressed: () => _openEditSleepPeriodModal(session),
+                  icon: const Icon(Icons.edit),
+                  color: Colors.blue,
+                  tooltip: 'Редактировать',
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                ),
+                
+                // Кнопка удаления
+                IconButton(
+                  onPressed: () => _deleteSleepPeriod(session),
+                  icon: const Icon(Icons.delete),
+                  color: Colors.red,
+                  tooltip: 'Удалить',
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                ),
+              ],
+            ),
           ],
         ),
       ),
+    ),
     );
   }
 
