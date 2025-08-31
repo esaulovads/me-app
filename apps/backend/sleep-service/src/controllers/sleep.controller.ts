@@ -190,4 +190,19 @@ export class SleepController {
     await this.sleepService.deleteSleepSession(id, userId);
     return { message: 'Период сна успешно удален' };
   }
+
+  // Быстрое завершение периода сна (для виджета)
+  @Put(':id/wake-up')
+  async wakeUpFromSleep(
+    @Headers('user-id') userId: string,
+    @Param('id') id: string,
+    @Body() body?: { wakeTime?: string },
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    const wakeTime = body?.wakeTime ? new Date(body.wakeTime) : new Date();
+    return this.sleepService.completeSleepSession(id, userId, wakeTime);
+  }
 } 
