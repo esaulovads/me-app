@@ -16,6 +16,11 @@ dependencies:
   http: ^1.1.0
   shared_preferences: ^2.2.2
   device_info_plus: ^9.1.2
+  # Для уведомлений и фоновых задач
+  flutter_local_notifications: ^17.2.1+2
+  flutter_background_service: ^5.0.10
+  # Для работы с timezone
+  timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:

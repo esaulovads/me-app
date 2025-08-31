@@ -194,7 +194,7 @@ export class SleepService {
     }
   }
 
-  // Получение времени пробуждения на конкретную дату согласно расписанию
+  // Получение времени пробуждения на конкретную дата согласно расписанию
   async getWakeTimeForDate(userId: string, date: string): Promise<string | null> {
     const schedule = await this.getSleepSchedule(userId);
     
@@ -207,5 +207,23 @@ export class SleepService {
     const dayOfWeek = dateObj.getDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
 
     return schedule.getWakeTimeForDay(dayOfWeek);
+  }
+
+  // Быстрое завершение сессии сна (для виджета)
+  async completeSleepSession(id: string, userId: string, wakeTime: Date): Promise<SleepSession> {
+    const sleepSession = await this.getSleepSessionById(id, userId);
+    
+    // Проверяем, что время пробуждения позже времени засыпания
+    if (wakeTime <= sleepSession.sleepTime) {
+      throw new BadRequestException('Время пробуждения должно быть позже времени засыпания');
+    }
+
+    // Обновляем время пробуждения и продолжительность
+    const durationMinutes = Math.round((wakeTime.getTime() - sleepSession.sleepTime.getTime()) / (1000 * 60));
+    
+    sleepSession.wakeTime = wakeTime;
+    sleepSession.durationMinutes = durationMinutes;
+
+    return this.sleepSessionRepository.save(sleepSession);
   }
 } 

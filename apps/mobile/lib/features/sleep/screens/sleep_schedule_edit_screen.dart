@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/sleep_schedule_model.dart';
 import '../widgets/sleep_schedule_settings.dart';
+import '../widgets/sleep_tracking_widget.dart';
 
 /// Экран для редактирования расписания сна
 class SleepScheduleEditScreen extends StatefulWidget {
@@ -19,6 +20,13 @@ class SleepScheduleEditScreen extends StatefulWidget {
 
 class _SleepScheduleEditScreenState extends State<SleepScheduleEditScreen> {
   bool _hasChanges = false;
+  SleepSchedule? _currentSchedule;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSchedule = widget.currentSchedule;
+  }
 
   /// Обработчик обновления расписания
   void _onScheduleUpdated() {
@@ -28,6 +36,14 @@ class _SleepScheduleEditScreenState extends State<SleepScheduleEditScreen> {
     
     // Возвращаемся назад с результатом
     Navigator.of(context).pop(true);
+  }
+
+  /// Обработчик для обновления локального состояния расписания
+  void _onScheduleChanged(SleepSchedule? newSchedule) {
+    setState(() {
+      _currentSchedule = newSchedule;
+      _hasChanges = true;
+    });
   }
 
   /// Обработчик кнопки "Назад" с проверкой изменений
@@ -118,6 +134,17 @@ class _SleepScheduleEditScreenState extends State<SleepScheduleEditScreen> {
                 userId: widget.userId,
                 currentSchedule: widget.currentSchedule,
                 onScheduleUpdated: _onScheduleUpdated,
+                onScheduleChanged: _onScheduleChanged,
+              ),
+              
+              // Виджет отслеживания сна
+              SleepTrackingWidget(
+                userId: widget.userId,
+                schedule: _currentSchedule,
+                onScheduleNeeded: () {
+                  // Если нужно настроить расписание, остаемся на этом экране
+                  // Пользователь уже на экране настройки
+                },
               ),
               
               // Дополнительный отступ снизу для удобства прокрутки

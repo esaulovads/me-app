@@ -5,6 +5,8 @@ import 'features/auth/services/auth_service.dart';
 import 'features/profile/services/profile_service.dart';
 import 'features/profile/services/performance_monitor.dart';
 import 'features/profile/screens/main_screen.dart';
+import 'features/sleep/services/sleep_background_service.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 void main() async {
   try {
@@ -17,6 +19,14 @@ void main() async {
     // Инициализируем мониторинг производительности
     PerformanceMonitor().initialize();
     print('[INIT] Performance monitor initialized');
+    
+    // Инициализируем timezone для уведомлений
+    tz.initializeTimeZones();
+    print('[INIT] Timezone initialized');
+    
+    // Инициализируем фоновый сервис отслеживания сна
+    await SleepBackgroundService.initialize();
+    print('[INIT] Sleep background service initialized');
     
     print('[INIT] Running app...');
     runApp(const MyApp());

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import '../models/sleep_schedule_model.dart';
 import '../services/sleep_service.dart';
+import '../services/notification_permission_service.dart';
 
 /// Виджет для настройки расписания сна
 class SleepScheduleSettings extends StatefulWidget {
   final String userId;
   final SleepSchedule? currentSchedule;
   final VoidCallback? onScheduleUpdated;
+  final Function(SleepSchedule?)? onScheduleChanged;
 
   const SleepScheduleSettings({
     Key? key,
     required this.userId,
     this.currentSchedule,
     this.onScheduleUpdated,
+    this.onScheduleChanged,
   }) : super(key: key);
 
   @override
@@ -130,13 +133,19 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
       final result = await _sleepService.createOrUpdateSleepSchedule(dto);
       
       if (result != null) {
+        // Запрашиваем разрешения на уведомления после успешного сохранения
+        final hasPermissions = await NotificationPermissionService.requestNotificationPermissions(context);
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Расписание сна успешно сохранено'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(hasPermissions 
+              ? 'Расписание сна успешно сохранено'
+              : 'Расписание сохранено. Для уведомлений включите разрешения в настройках.'),
+            backgroundColor: hasPermissions ? Colors.green : Colors.orange,
           ),
         );
         widget.onScheduleUpdated?.call();
+        widget.onScheduleChanged?.call(result);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -7,6 +7,9 @@ import 'widgets/sleep_schedule_settings.dart';
 import 'widgets/next_wake_time_display.dart';
 import 'widgets/add_sleep_period_modal.dart';
 import 'screens/sleep_schedule_edit_screen.dart';
+import 'services/sleep_notification_service.dart';
+import 'services/sleep_background_service.dart';
+import 'services/notification_permission_service.dart';
 import '../nutrition/widgets/date_navigation_header.dart';
 
 /// Экран управления сном
@@ -46,8 +49,44 @@ class _SleepScreenState extends State<SleepScreen>
   void initState() {
     super.initState();
     _sleepService = SleepService(userId: widget.userId);
+    _initializeServices();
     _loadCurrentSchedule();
     _loadDataForDate(_selectedDate); // Загружаем данные сна для выбранной даты
+  }
+
+  /// Инициализация сервисов уведомлений и фонового отслеживания
+  Future<void> _initializeServices() async {
+    try {
+      // Инициализируем фоновый сервис
+      await SleepBackgroundService.initialize();
+    } catch (e) {
+      print('Ошибка инициализации сервисов отслеживания сна: $e');
+    }
+  }
+
+  /// Проверяет и запрашивает разрешения на уведомления, если есть расписание
+  Future<void> _checkNotificationPermissions() async {
+    // Проверяем только если есть расписание сна
+    if (_currentSchedule == null) {
+      return;
+    }
+
+    final hasPermissions = await NotificationPermissionService.hasNotificationPermissions();
+    if (!hasPermissions && mounted) {
+      // Запрашиваем разрешения напрямую от системы без диалога приложения
+      final granted = await NotificationPermissionService.requestSystemPermissionsDirectly();
+      
+      if (!granted && mounted) {
+        // Если пользователь отклонил, показываем информационное сообщение
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Для получения напоминаний о сне включите уведомления в настройках приложения'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -92,6 +131,9 @@ class _SleepScreenState extends State<SleepScreen>
       
       print('Расписание сна загружено: ${schedule != null ? 'найдено' : 'не настроено'}');
       
+      // Проверяем разрешения на уведомления, если есть расписание
+      await _checkNotificationPermissions();
+      
     } catch (e) {
       print('Ошибка загрузки расписания сна: $e');
       
@@ -109,6 +151,17 @@ class _SleepScreenState extends State<SleepScreen>
   /// Обработчик обновления расписания
   void _onScheduleUpdated() {
     _loadCurrentSchedule();
+    _updateBackgroundService();
+  }
+
+  /// Обновление фонового сервиса при изменении расписания
+  Future<void> _updateBackgroundService() async {
+    try {
+      // Обновляем кэшированное расписание в фоновом сервисе
+      await SleepBackgroundService.updateCachedSchedule(widget.userId);
+    } catch (e) {
+      print('Ошибка обновления фонового сервиса: $e');
+    }
   }
 
   // === Методы для работы с датами и данными сна ===
@@ -824,6 +877,7 @@ class _SleepScreenState extends State<SleepScreen>
                               currentSchedule: _currentSchedule,
                               onScheduleUpdated: _onScheduleUpdated,
                             ),
+
                         ],
                         
                         // Данные сна за выбранную дату
