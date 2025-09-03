@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/sleep_schedule_model.dart';
 import '../services/sleep_service.dart';
-import '../services/notification_permission_service.dart';
 
 /// Виджет для настройки расписания сна
 class SleepScheduleSettings extends StatefulWidget {
@@ -27,6 +27,11 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
   ScheduleType _selectedType = ScheduleType.sameTime;
   bool _isEnabled = true;
   bool _isLoading = false;
+  
+  // Debounce для автосохранения
+  Timer? _saveTimer;
+  static const Duration _saveDelay = Duration(milliseconds: 1000); // 1 секунда задержки
+  bool _isSaving = false; // Состояние сохранения для индикатора
 
   // Контроллеры для времени пробуждения
   final Map<String, TimeOfDay?> _wakeTimes = {
@@ -105,11 +110,35 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
       setState(() {
         _wakeTimes[key] = picked;
       });
+      // Автосохранение при изменении времени
+      _autoSave();
     }
   }
 
+  /// Автосохранение с debounce
+  void _autoSave() {
+    // Отменяем предыдущий таймер
+    _saveTimer?.cancel();
+    
+    // Показываем индикатор сохранения
+    if (mounted) {
+      setState(() {
+        _isSaving = true;
+      });
+    }
+    
+    // Устанавливаем новый таймер
+    _saveTimer = Timer(_saveDelay, () {
+      if (mounted) {
+        _saveSchedule();
+      }
+    });
+  }
+
   /// Сохраняет расписание
-  Future<void> _saveSchedule() async {
+  Future<void> _saveSchedule({bool showFeedback = false}) async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
@@ -133,20 +162,21 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
       final result = await _sleepService.createOrUpdateSleepSchedule(dto);
       
       if (result != null) {
-        // Запрашиваем разрешения на уведомления после успешного сохранения
-        final hasPermissions = await NotificationPermissionService.requestNotificationPermissions(context);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(hasPermissions 
-              ? 'Расписание сна успешно сохранено'
-              : 'Расписание сохранено. Для уведомлений включите разрешения в настройках.'),
-            backgroundColor: hasPermissions ? Colors.green : Colors.orange,
-          ),
-        );
-        widget.onScheduleUpdated?.call();
-        widget.onScheduleChanged?.call(result);
-      } else {
+        // Показываем уведомление только если это ручное сохранение
+        if (showFeedback && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Расписание сна успешно сохранено'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Возвращаемся на основной экран только при ручном сохранении
+          widget.onScheduleUpdated?.call();
+        } else {
+          // При автосохранении только обновляем данные, не закрываем экран
+          widget.onScheduleChanged?.call(result);
+        }
+      } else if (showFeedback && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Ошибка сохранения расписания'),
@@ -154,10 +184,24 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
           ),
         );
       }
+    } catch (e) {
+      // Тихо логируем ошибки автосохранения
+      print('Ошибка автосохранения расписания: $e');
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка сохранения: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isSaving = false; // Скрываем индикатор сохранения
+        });
+      }
     }
   }
 
@@ -256,12 +300,26 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
                   ),
                 ),
                 const Spacer(),
+                // Фиксированное место для индикатора автосохранения
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: _isSaving
+                      ? const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.indigo,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 8),
                 Switch(
                   value: _isEnabled,
                   onChanged: (value) {
                     setState(() {
                       _isEnabled = value;
                     });
+                    // Автосохранение при изменении состояния включения
+                    _autoSave();
                   },
                 ),
               ],
@@ -288,6 +346,8 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
                     setState(() {
                       _selectedType = value;
                     });
+                    // Автосохранение при изменении типа расписания
+                    _autoSave();
                   }
                 },
               )),
@@ -304,48 +364,12 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
               else
                 _buildIndividualContent(),
               
-              const SizedBox(height: 24),
-              
-              // Кнопка сохранения
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveSchedule,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Сохранить расписание',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                ),
-              ),
             ] else ...[
               const Text(
                 'Расписание сна отключено',
                 style: TextStyle(
                   color: Colors.grey,
                   fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveSchedule,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    'Сохранить настройки',
-                    style: TextStyle(fontSize: 16),
-                  ),
                 ),
               ),
             ],
@@ -357,6 +381,7 @@ class _SleepScheduleSettingsState extends State<SleepScheduleSettings> {
 
   @override
   void dispose() {
+    _saveTimer?.cancel(); // Отменяем таймер при уничтожении виджета
     _sleepService.dispose();
     super.dispose();
   }

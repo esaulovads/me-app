@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/sleep_schedule_model.dart';
 import '../services/sleep_notification_service.dart';
 import '../services/sleep_background_service.dart';
+import '../services/notification_permission_service.dart';
 
 /// Виджет для управления отслеживанием сна
 /// Интегрируется с экраном сна и обеспечивает удобное управление
@@ -86,6 +87,14 @@ class _SleepTrackingWidgetState extends State<SleepTrackingWidget> {
         
         _showSnackBar('Отслеживание сна отключено', Colors.orange);
       } else {
+        // Сначала запрашиваем разрешения на уведомления напрямую от системы
+        final hasPermissions = await NotificationPermissionService.requestSystemPermissionsDirectly();
+        
+        if (!hasPermissions) {
+          _showSnackBar('Для работы отслеживания сна необходимы разрешения на уведомления', Colors.red);
+          return;
+        }
+        
         // Запускаем отслеживание
         await SleepBackgroundService.startTracking(widget.userId);
         await _notificationService.scheduleBedtimeNotification(widget.schedule!);

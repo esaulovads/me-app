@@ -52,6 +52,7 @@ class _SleepScreenState extends State<SleepScreen>
     _initializeServices();
     _loadCurrentSchedule();
     _loadDataForDate(_selectedDate); // Загружаем данные сна для выбранной даты
+    _checkNotificationPermissionsOnInit(); // Проверяем разрешения при входе на экран
   }
 
   /// Инициализация сервисов уведомлений и фонового отслеживания
@@ -64,28 +65,33 @@ class _SleepScreenState extends State<SleepScreen>
     }
   }
 
-  /// Проверяет и запрашивает разрешения на уведомления, если есть расписание
-  Future<void> _checkNotificationPermissions() async {
-    // Проверяем только если есть расписание сна
-    if (_currentSchedule == null) {
-      return;
-    }
-
-    final hasPermissions = await NotificationPermissionService.hasNotificationPermissions();
-    if (!hasPermissions && mounted) {
-      // Запрашиваем разрешения напрямую от системы без диалога приложения
-      final granted = await NotificationPermissionService.requestSystemPermissionsDirectly();
-      
-      if (!granted && mounted) {
-        // Если пользователь отклонил, показываем информационное сообщение
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Для получения напоминаний о сне включите уведомления в настройках приложения'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 4),
-          ),
-        );
+  /// Проверяет и запрашивает разрешения на уведомления, если отслеживание сна включено
+  Future<void> _checkNotificationPermissionsOnInit() async {
+    try {
+      // Проверяем только если отслеживание сна включено
+      final isTrackingActive = await SleepBackgroundService.isTrackingActive();
+      if (!isTrackingActive) {
+        return;
       }
+
+      final hasPermissions = await NotificationPermissionService.hasNotificationPermissions();
+      if (!hasPermissions && mounted) {
+        // Запрашиваем разрешения напрямую от системы без диалога приложения
+        final granted = await NotificationPermissionService.requestSystemPermissionsDirectly();
+        
+        if (!granted && mounted) {
+          // Если пользователь отклонил, показываем информационное сообщение
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Для получения напоминаний о сне включите уведомления в настройках приложения'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Ошибка проверки разрешений на уведомления: $e');
     }
   }
 
@@ -130,9 +136,6 @@ class _SleepScreenState extends State<SleepScreen>
       });
       
       print('Расписание сна загружено: ${schedule != null ? 'найдено' : 'не настроено'}');
-      
-      // Проверяем разрешения на уведомления, если есть расписание
-      await _checkNotificationPermissions();
       
     } catch (e) {
       print('Ошибка загрузки расписания сна: $e');
@@ -877,6 +880,7 @@ class _SleepScreenState extends State<SleepScreen>
                               currentSchedule: _currentSchedule,
                               onScheduleUpdated: _onScheduleUpdated,
                             ),
+
 
                         ],
                         
