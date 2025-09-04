@@ -36,9 +36,10 @@ services:
       - me-app-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 5s
-      timeout: 5s
-      retries: 5
+апиши      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
 
   auth-service:
     build:
@@ -120,6 +121,29 @@ services:
       - DB_NAME=fitness_sleep
     ports:
       - "${SLEEP_SERVICE_PORT:-3003}:3003"
+    networks:
+      - me-app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  activity-service:
+    build:
+      context: ./apps/backend/activity-service
+      dockerfile: Dockerfile
+    container_name: me-app-activity
+    env_file:
+      - ./apps/backend/activity-service/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=fitness_activity
+      - PORT=3004
+    ports:
+      - "${ACTIVITY_SERVICE_PORT:-3004}:3004"
     networks:
       - me-app-network
     depends_on:

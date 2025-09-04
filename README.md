@@ -11,7 +11,7 @@
 - Profile Service - управление профилями и расчет КБЖУ
 - Nutrition Service - управление питанием и рецептами
 - Sleep Service - управление расписанием сна и отслеживание его продолжительности
-- Activity Service - отслеживание физической активности
+- **Activity Service** - отслеживание тренировок и физической активности с автоматическим расчетом поднятого веса
 - Gamification Service - игровые механики и достижения
 - Product Scanner Service - интеграция со сканером штрихкодов
 - API Gateway - маршрутизация запросов
@@ -40,10 +40,14 @@
     - Оптимизированное кэширование для максимально быстрого пользовательского опыта
 14. Сканирование штрихкодов продуктов
 15. **Управление расписанием сна** - настройка индивидуального расписания пробуждения с поддержкой разных режимов (ежедневно, будни/выходные, индивидуально по дням) и отслеживание продолжительности сна
-16. Отслеживание физической активности
-17. Учет тренировок
-18. Игровые механики и достижения
-19. Система уровней и прогресса
+16. **Отслеживание тренировок** - полнофункциональная система управления тренировками:
+    - Создание тренировок с указанием даты и продолжительности
+    - Добавление упражнений из базы данных с указанием целевых групп мышц
+    - Запись подходов с количеством повторений и весом снарядов
+    - Автоматический расчет поднятого веса: `повторения × вес × количество снарядов`
+    - Статистика тренировок и прогресс пользователя
+17. Игровые механики и достижения
+18. Система уровней и прогресса
 
 ## Оптимизации производительности
 
@@ -177,6 +181,39 @@ NODE_ENV=development
 API_PREFIX=/api/v1
 ```
 
+**apps/backend/nutrition-service/.env:**
+```env
+PORT=3002
+DB_HOST=postgres
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_NAME=fitness_nutrition
+NODE_ENV=development
+```
+
+**apps/backend/sleep-service/.env:**
+```env
+PORT=3003
+DB_HOST=postgres
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_NAME=fitness_sleep
+NODE_ENV=development
+```
+
+**apps/backend/activity-service/.env:**
+```env
+PORT=3004
+DB_HOST=postgres
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_NAME=fitness_activity
+NODE_ENV=development
+```
+
 ### Запуск контейнеров
 
 1. Соберите и запустите контейнеры:
@@ -203,6 +240,9 @@ docker-compose down
 2. Сервисы будут доступны по следующим адресам:
    - Auth Service: http://localhost:3000
    - Profile Service: http://localhost:3001
+   - Nutrition Service: http://localhost:3002
+   - Sleep Service: http://localhost:3003
+   - Activity Service: http://localhost:3004
 
 ### Просмотр логов
 
@@ -213,6 +253,9 @@ docker-compose logs -f
 # Логи конкретного сервиса
 docker-compose logs -f auth-service
 docker-compose logs -f profile-service
+docker-compose logs -f nutrition-service
+docker-compose logs -f sleep-service
+docker-compose logs -f activity-service
 ```
 
 ### Управление контейнерами
@@ -221,14 +264,23 @@ docker-compose logs -f profile-service
 # Перезапуск конкретного сервиса
 docker-compose restart auth-service
 docker-compose restart profile-service
+docker-compose restart nutrition-service
+docker-compose restart sleep-service
+docker-compose restart activity-service
 
 # Остановка конкретного сервиса
 docker-compose stop auth-service
 docker-compose stop profile-service
+docker-compose stop nutrition-service
+docker-compose stop sleep-service
+docker-compose stop activity-service
 
 # Запуск конкретного сервиса
 docker-compose start auth-service
 docker-compose start profile-service
+docker-compose start nutrition-service
+docker-compose start sleep-service
+docker-compose start activity-service
 ```
 
 ## Мониторинг производительности
