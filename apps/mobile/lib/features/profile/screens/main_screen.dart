@@ -13,6 +13,10 @@ import '../../nutrition/nutrition_screen.dart';
 import '../../sleep/services/sleep_service.dart';
 import '../../sleep/widgets/sleep_progress_bar.dart';
 import '../../sleep/sleep_screen.dart';
+import '../../activity/services/activity_service.dart';
+import '../../activity/widgets/activity_progress_bar.dart';
+import '../../activity/activity_screen.dart';
+import '../../activity/models/workout_model.dart';
 
 class MainScreen extends StatefulWidget {
   final String userId;
@@ -30,6 +34,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   late final ProfileService _profileService;
   late final NutritionService _nutritionService;
   late final SleepService _sleepService;
+  late final ActivityService _activityService;
   late final PerformanceService _performanceService;
   late final PerformanceMonitor _performanceMonitor;
   
@@ -39,6 +44,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   String? _cachedAge;
   Map<String, dynamic>? _cachedNutritionData;
   double? _cachedSleepDuration; // Кэш для продолжительности сна
+  List<Workout>? _cachedTodaysWorkouts; // Кэш для сегодняшних тренировок
   
   bool _isLoading = false;
   bool _isInitialized = false;
@@ -48,6 +54,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   Timer? _nutritionUpdateTimer;
   Timer? _profileUpdateTimer;
   Timer? _sleepUpdateTimer;
+  Timer? _activityUpdateTimer;
 
   @override
   void initState() {
@@ -55,6 +62,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     _profileService = ProfileService(userId: widget.userId);
     _nutritionService = NutritionService(userId: widget.userId);
     _sleepService = SleepService(userId: widget.userId);
+    _activityService = ActivityService(userId: widget.userId);
     _performanceService = PerformanceService();
     _performanceMonitor = PerformanceMonitor();
     
@@ -87,8 +95,10 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     _nutritionUpdateTimer?.cancel();
     _profileUpdateTimer?.cancel();
     _sleepUpdateTimer?.cancel();
+    _activityUpdateTimer?.cancel();
     _nutritionService.dispose();
     _sleepService.dispose();
+    _activityService.dispose();
     super.dispose();
   }
 
@@ -103,12 +113,25 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
         // Инициализируем сервис производительности
         await _performanceService.initialize();
         
-        // Загружаем данные параллельно
-        await Future.wait([
-          _loadProfile(),
-          _loadNutritionData(),
-          _loadSleepData(),
-        ]);
+        // Загружаем только профиль сначала
+        await _loadProfile();
+        
+        // Остальные данные загружаем после инициализации UI
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) _loadNutritionData();
+            });
+            
+            Future.delayed(const Duration(milliseconds: 1000), () {
+              if (mounted) _loadSleepData();
+            });
+            
+            Future.delayed(const Duration(milliseconds: 1500), () {
+              if (mounted) _loadActivityData();
+            });
+          }
+        });
       });
       
       _isInitialized = true;
@@ -128,7 +151,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     // Отменяем предыдущий таймер если он есть
     _profileUpdateTimer?.cancel();
     
-    _profileUpdateTimer = Timer(const Duration(milliseconds: 300), () async {
+    _profileUpdateTimer = Timer(const Duration(milliseconds: 800), () async {
       try {
         final profile = await _profileService.getProfile();
         
@@ -162,7 +185,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     // Отменяем предыдущий таймер если он есть
     _nutritionUpdateTimer?.cancel();
     
-    _nutritionUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
+    _nutritionUpdateTimer = Timer(const Duration(milliseconds: 1000), () async {
       try {
         final summary = await _nutritionService.getTodaySummary();
         
@@ -192,6 +215,32 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             totalFats: 0,
             totalCarbs: 0,
           );
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  // Загрузка данных активности с кэшированием и мониторингом
+  Future<void> _loadActivityData() async {
+    // Отменяем предыдущий таймер если он есть
+    _activityUpdateTimer?.cancel();
+    
+    _activityUpdateTimer = Timer(const Duration(milliseconds: 1200), () async {
+      try {
+        final workouts = await _activityService.getTodaysWorkouts();
+        
+        if (mounted && workouts != _cachedTodaysWorkouts) {
+          _cachedTodaysWorkouts = workouts;
+          
+          measurePerformance('Activity UI update', () {
+            setState(() {});
+          });
+        }
+      } catch (e) {
+        // Обрабатываем ошибки тихо, используем пустой список как fallback
+        if (mounted && _cachedTodaysWorkouts == null) {
+          _cachedTodaysWorkouts = <Workout>[];
           setState(() {});
         }
       }
@@ -253,6 +302,11 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
         _loadSleepData(); // Запускаем асинхронно
       }
       
+      // Перезагружаем данные активности только при необходимости
+      if (_cachedTodaysWorkouts == null) {
+        _loadActivityData();
+      }
+      
       debugPrint('Умная перезагрузка: питание=${shouldReloadNutrition ? "обновлено" : "сохранено"}, сон=${shouldReloadSleep ? "обновлено" : "сохранено"}');
       
     } catch (e) {
@@ -263,9 +317,11 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
       _cachedNutritionData = null;
       _cachedDailySummary = null;
       _cachedSleepDuration = null;
+      _cachedTodaysWorkouts = null;
       _loadProfile();
       _loadNutritionData();
       _loadSleepData();
+      _loadActivityData();
     }
   }
 
@@ -274,7 +330,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     // Отменяем предыдущий таймер если он есть
     _sleepUpdateTimer?.cancel();
     
-    _sleepUpdateTimer = Timer(const Duration(milliseconds: 800), () async { // Увеличиваем debounce
+    _sleepUpdateTimer = Timer(const Duration(milliseconds: 1400), () async { // Увеличиваем debounce
       try {
         final sleepDuration = await _sleepService.getTodaySleepDuration();
         
@@ -459,6 +515,39 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     });
   }
 
+  // Оптимизированный виджет прогресс-бара активности с мониторингом
+  Widget _buildActivityProgressBar(Profile profile) {
+    return measurePerformance('Activity progress bar build', () {
+      final workouts = _cachedTodaysWorkouts ?? <Workout>[];
+      final totalWeight = workouts.fold<double>(0.0, (sum, workout) => sum + workout.totalWeight);
+      final targetWeight = 1000.0; // Целевой вес в кг (можно сделать настраиваемым)
+      final totalWorkouts = workouts.length;
+
+      return RepaintBoundary(
+        child: ActivityProgressBar(
+          totalWeight: totalWeight,
+          targetWeight: targetWeight,
+          totalWorkouts: totalWorkouts,
+          onTap: () async {
+            await measureAsyncPerformance('Activity screen navigation', () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ActivityScreen(userId: widget.userId),
+                ),
+              );
+            });
+            
+            // Обновляем данные активности при возвращении
+            _cachedTodaysWorkouts = null;
+            await _activityService.clearCache(); // Очищаем кэш для свежих данных
+            _loadActivityData();
+          },
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return measurePerformance('Main screen build', () {
@@ -517,9 +606,12 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             SliverToBoxAdapter(
               child: _buildSleepProgressBar(_cachedProfile!),
             ),
-            // Здесь будет остальной контент (активность и т.д.)
+            SliverToBoxAdapter(
+              child: _buildActivityProgressBar(_cachedProfile!),
+            ),
+            // Небольшой отступ снизу
             const SliverToBoxAdapter(
-              child: SizedBox(height: 24), // Небольшой отступ снизу
+              child: SizedBox(height: 24),
             ),
           ],
         ),
