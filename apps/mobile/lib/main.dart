@@ -6,6 +6,7 @@ import 'features/profile/services/profile_service.dart';
 import 'features/profile/services/performance_monitor.dart';
 import 'features/profile/screens/main_screen.dart';
 import 'features/sleep/services/sleep_background_service.dart';
+import 'features/auth/services/auth_debug_service.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
 void main() async {
@@ -110,8 +111,12 @@ class _AuthWrapperState extends State<AuthWrapper> with PerformanceMonitorMixin 
 
     try {
       await measureAsyncPerformance('Authentication flow', () async {
+        // Выводим отладочную информацию об авторизации
+        await AuthDebugService.printDebugInfo();
+        
         // 1. Аутентифицируем пользователя
         final userId = await _authService.authenticate();
+        print('Authenticated with userId: $userId');
         
         // 2. Проверяем заполненность профиля
         final profileService = ProfileService(userId: userId);
