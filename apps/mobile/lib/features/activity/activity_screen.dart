@@ -161,9 +161,10 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
       ),
     );
     
-    if (result == true) {
-      // Перезагружаем данные после изменения тренировки
+    if (result == true || result == null) {
+      // Перезагружаем данные после изменения тренировки или возвращения
       _cachedWorkouts = null;
+      await _activityService.clearCache();
       await _loadWorkoutsForDate(_selectedDate);
     }
   }

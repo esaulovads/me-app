@@ -17,11 +17,17 @@ class WorkoutSet {
   /// Создание модели подхода из JSON
   factory WorkoutSet.fromJson(Map<String, dynamic> json) {
     return WorkoutSet(
-      id: json['id'] as String,
-      workoutExerciseId: json['workoutExerciseId'] as String,
-      reps: json['reps'] as int,
-      weight: (json['weight'] as num).toDouble(),
-      totalWeight: (json['totalWeight'] as num).toDouble(),
+      id: json['id'] as String? ?? '',
+      workoutExerciseId: json['workoutExerciseId'] as String? ?? '',
+      reps: json['reps'] is String 
+          ? int.tryParse(json['reps'] as String) ?? 0
+          : json['reps'] as int? ?? 0,
+      weight: json['weight'] is String 
+          ? double.tryParse(json['weight'] as String) ?? 0.0
+          : (json['weight'] as num?)?.toDouble() ?? 0.0,
+      totalWeight: json['totalWeight'] is String 
+          ? double.tryParse(json['totalWeight'] as String) ?? 0.0
+          : (json['totalWeight'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -96,9 +102,17 @@ class WorkoutExercise {
       id: json['id'] as String? ?? '',
       workoutId: json['workoutId'] as String? ?? '',
       exerciseId: json['exerciseId'] as String? ?? '',
-      exerciseName: json['exerciseName'] as String? ?? 'Неизвестное упражнение',
-      targetMuscleGroup: json['targetMuscleGroup'] as String? ?? 'Неизвестная группа',
-      equipmentCount: json['equipmentCount'] as int? ?? 1,
+      // Получаем название упражнения из вложенного объекта exercise или напрямую
+      exerciseName: json['exercise']?['name'] as String? ?? 
+                   json['exerciseName'] as String? ?? 
+                   'Неизвестное упражнение',
+      // Получаем группу мышц из вложенного объекта exercise или напрямую  
+      targetMuscleGroup: json['exercise']?['targetMuscleGroup'] as String? ?? 
+                        json['targetMuscleGroup'] as String? ?? 
+                        'Неизвестная группа',
+      // Получаем количество снарядов из вложенного объекта exercise или напрямую
+      equipmentCount: json['exercise']?['equipmentCount'] as int? ?? 
+                     json['equipmentCount'] as int? ?? 1,
       totalWeight: json['totalWeight'] is String 
           ? double.tryParse(json['totalWeight'] as String) ?? 0.0
           : (json['totalWeight'] as num?)?.toDouble() ?? 0.0,
@@ -322,11 +336,21 @@ class WorkoutStatistics {
   /// Создание модели статистики из JSON
   factory WorkoutStatistics.fromJson(Map<String, dynamic> json) {
     return WorkoutStatistics(
-      totalWorkouts: json['totalWorkouts'] as int,
-      totalWeight: (json['totalWeight'] as num).toDouble(),
-      totalDuration: json['totalDuration'] as int,
-      averageWeight: (json['averageWeight'] as num).toDouble(),
-      averageDuration: json['averageDuration'] as int,
+      totalWorkouts: json['totalWorkouts'] is String 
+          ? int.tryParse(json['totalWorkouts'] as String) ?? 0
+          : json['totalWorkouts'] as int? ?? 0,
+      totalWeight: json['totalWeight'] is String 
+          ? double.tryParse(json['totalWeight'] as String) ?? 0.0
+          : (json['totalWeight'] as num?)?.toDouble() ?? 0.0,
+      totalDuration: json['totalDuration'] is String 
+          ? int.tryParse(json['totalDuration'] as String) ?? 0
+          : json['totalDuration'] as int? ?? 0,
+      averageWeight: json['averageWeight'] is String 
+          ? double.tryParse(json['averageWeight'] as String) ?? 0.0
+          : (json['averageWeight'] as num?)?.toDouble() ?? 0.0,
+      averageDuration: json['averageDuration'] is String 
+          ? int.tryParse(json['averageDuration'] as String) ?? 0
+          : json['averageDuration'] as int? ?? 0,
     );
   }
 
