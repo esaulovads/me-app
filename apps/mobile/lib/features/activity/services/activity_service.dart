@@ -446,6 +446,31 @@ class ActivityService {
     }
   }
 
+  /// Удаление упражнения из тренировки
+  Future<void> removeExerciseFromWorkout(String workoutExerciseId) async {
+    try {
+      final url = Uri.parse('$baseUrl/workout-exercises/$workoutExerciseId');
+      
+      final response = await _executeWithRetry(() => _delete(url.toString()));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Очищаем кэш для обновления данных
+        _clearWorkoutRelatedCaches();
+      } else {
+        throw Exception('Ошибка удаления упражнения: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in removeExerciseFromWorkout: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection')) {
+        throw Exception('Нет подключения к интернету');
+      } else if (e.toString().contains('TimeoutException')) {
+        throw Exception('Превышено время ожидания ответа');
+      } else {
+        rethrow;
+      }
+    }
+  }
+
   // === МЕТОДЫ ДЛЯ РАБОТЫ С ПОДХОДАМИ ===
 
   /// Создание подхода
@@ -569,7 +594,7 @@ class ActivityService {
       
       final response = await _executeWithRetry(() => _delete(url.toString()));
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         // Очищаем кэш для обновления данных
         _clearWorkoutRelatedCaches();
       } else {

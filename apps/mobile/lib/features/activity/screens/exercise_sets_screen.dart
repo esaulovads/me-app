@@ -92,7 +92,7 @@ class _ExerciseSetsScreenState extends State<ExerciseSetsScreen> {
       final newWeight = weight ?? set.weight;
       
       // Вычисляем общий вес: повторения × вес × количество снарядов
-      final totalWeight = newReps * newWeight * widget.workoutExercise.equipmentCount;
+      final totalWeight = (newReps * newWeight * widget.workoutExercise.equipmentCount).toDouble();
       
       _sets[index] = set.copyWith(
         reps: newReps,
@@ -404,8 +404,10 @@ class _ExerciseSetsScreenState extends State<ExerciseSetsScreen> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         onChanged: (value) {
-                          final reps = int.tryParse(value) ?? 0;
-                          _updateSet(index, reps: reps);
+                          final reps = int.tryParse(value.trim()) ?? set.reps;
+                          if (reps >= 0) {
+                            _updateSet(index, reps: reps);
+                          }
                         },
                       ),
                     ],
@@ -439,8 +441,10 @@ class _ExerciseSetsScreenState extends State<ExerciseSetsScreen> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         onChanged: (value) {
-                          final weight = double.tryParse(value) ?? 0.0;
-                          _updateSet(index, weight: weight);
+                          final weight = double.tryParse(value.trim()) ?? set.weight;
+                          if (weight >= 0.0) {
+                            _updateSet(index, weight: weight);
+                          }
                         },
                       ),
                     ],
