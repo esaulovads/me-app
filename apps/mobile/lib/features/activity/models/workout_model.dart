@@ -184,6 +184,9 @@ class Workout {
   final List<String> targetMuscleGroups; // Целевые группы мышц
   final double totalWeight; // Общий поднятый вес в тренировке
   final List<WorkoutExercise> exercises; // Упражнения в тренировке
+  final DateTime? startedAt; // Время начала тренировки (для таймера)
+  final DateTime? finishedAt; // Время завершения тренировки (для таймера)
+  final bool isActive; // Активна ли тренировка (идет таймер)
 
   const Workout({
     required this.id,
@@ -193,6 +196,9 @@ class Workout {
     required this.targetMuscleGroups,
     required this.totalWeight,
     required this.exercises,
+    this.startedAt,
+    this.finishedAt,
+    this.isActive = false,
   });
 
   /// Создание модели тренировки из JSON
@@ -216,6 +222,13 @@ class Workout {
               ?.map((exerciseJson) => WorkoutExercise.fromJson(exerciseJson as Map<String, dynamic>))
               .toList() ??
           [],
+      startedAt: json['startedAt'] != null 
+          ? DateTime.parse(json['startedAt'] as String) 
+          : null,
+      finishedAt: json['finishedAt'] != null 
+          ? DateTime.parse(json['finishedAt'] as String) 
+          : null,
+      isActive: json['isActive'] as bool? ?? false,
     );
   }
 
@@ -229,6 +242,9 @@ class Workout {
       'targetMuscleGroups': targetMuscleGroups,
       'totalWeight': totalWeight,
       'exercises': exercises.map((exercise) => exercise.toJson()).toList(),
+      'startedAt': startedAt?.toIso8601String(),
+      'finishedAt': finishedAt?.toIso8601String(),
+      'isActive': isActive,
     };
   }
 
@@ -241,6 +257,9 @@ class Workout {
     List<String>? targetMuscleGroups,
     double? totalWeight,
     List<WorkoutExercise>? exercises,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+    bool? isActive,
   }) {
     return Workout(
       id: id ?? this.id,
@@ -250,6 +269,9 @@ class Workout {
       targetMuscleGroups: targetMuscleGroups ?? this.targetMuscleGroups,
       totalWeight: totalWeight ?? this.totalWeight,
       exercises: exercises ?? this.exercises,
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
+      isActive: isActive ?? this.isActive,
     );
   }
 

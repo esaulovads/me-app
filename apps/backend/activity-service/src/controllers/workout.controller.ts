@@ -95,4 +95,36 @@ export class WorkoutController {
   ) {
     return this.workoutService.delete(id, userId);
   }
+
+  /**
+   * Начало тренировки (запуск таймера)
+   */
+  @Post(':id/start')
+  async startWorkout(
+    @Param('id') id: string,
+    @Headers('user-id') userId: string,
+  ) {
+    return this.workoutService.startWorkout(id, userId);
+  }
+
+  /**
+   * Завершение тренировки (остановка таймера)
+   */
+  @Post(':id/finish')
+  async finishWorkout(
+    @Param('id') id: string,
+    @Headers('user-id') userId: string,
+  ) {
+    return this.workoutService.finishWorkout(id, userId);
+  }
+
+  /**
+   * Получение активной тренировки пользователя
+   */
+  @Get('active/current')
+  async getActiveWorkout(
+    @Headers('user-id') userId: string,
+  ) {
+    return this.workoutService.getActiveWorkout(userId);
+  }
 }

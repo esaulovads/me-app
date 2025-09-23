@@ -32,7 +32,7 @@ class ActivityService {
     if (Platform.isAndroid) {
       return 'http://10.0.2.2:3004';
     }
-    return 'http://localhost:3004';
+    return 'http://10.0.2.2:3004'; // Для Android эмулятора
   }
 
   // Кэш для данных активности с TTL
@@ -229,6 +229,88 @@ class ActivityService {
   }
 
   // === МЕТОДЫ ДЛЯ РАБОТЫ С ТРЕНИРОВКАМИ ===
+
+  /// Начало тренировки (запуск таймера)
+  Future<Workout> startWorkout(String workoutId) async {
+    try {
+      final url = Uri.parse('$baseUrl/workouts/$workoutId/start');
+      
+      final response = await _executeWithRetry(() => _post(url.toString(), body: '{}'));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final workout = Workout.fromJson(data);
+        
+        // Очищаем кэш для обновления данных
+        _clearWorkoutRelatedCaches();
+        
+        return workout;
+      } else {
+        throw Exception('Ошибка начала тренировки: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Нет подключения к интернету');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Завершение тренировки (остановка таймера)
+  Future<Workout> finishWorkout(String workoutId) async {
+    try {
+      final url = Uri.parse('$baseUrl/workouts/$workoutId/finish');
+      
+      final response = await _executeWithRetry(() => _post(url.toString(), body: '{}'));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final workout = Workout.fromJson(data);
+        
+        // Очищаем кэш для обновления данных
+        _clearWorkoutRelatedCaches();
+        
+        return workout;
+      } else {
+        throw Exception('Ошибка завершения тренировки: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Нет подключения к интернету');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Получение активной тренировки пользователя
+  Future<Workout?> getActiveWorkout() async {
+    try {
+      final url = Uri.parse('$baseUrl/workouts/active/current');
+      
+      final response = await _executeWithRetry(() => _get(url.toString()));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return Workout.fromJson(data);
+      } else if (response.statusCode == 404) {
+        // Нет активной тренировки - это нормально
+        return null;
+      } else {
+        throw Exception('Ошибка получения активной тренировки: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Нет подключения к интернету');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа');
+    } catch (e) {
+      if (e.toString().contains('404')) {
+        return null;
+      }
+      rethrow;
+    }
+  }
 
   /// Создание новой тренировки
   Future<Workout> createWorkout({

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'services/activity_service.dart';
+import 'services/workout_timer_service.dart';
+import 'services/workout_schedule_service.dart';
 import 'models/workout_model.dart';
+import 'models/workout_schedule_model.dart';
 import 'screens/workout_detail_screen.dart';
+import 'screens/workout_schedule_screen.dart';
+import 'widgets/workout_timer_widget.dart';
 import '../nutrition/widgets/date_navigation_header.dart';
-import '../nutrition/utils/date_formatter.dart';
 import '../profile/services/performance_monitor.dart';
 
 /// Экран отслеживания физической активности
@@ -23,28 +26,31 @@ class ActivityScreen extends StatefulWidget {
 
 class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitorMixin {
   late final ActivityService _activityService;
+  late final WorkoutScheduleService _scheduleService;
   
   // Кэш для данных
   DateTime _selectedDate = DateTime.now();
   List<Workout>? _cachedWorkouts;
+  WorkoutSchedule? _todaySchedule;
   
   bool _isLoading = false;
   bool _isInitialized = false;
   String? _error;
-  
-  // Debounce для предотвращения частых обновлений
-  Timer? _dataUpdateTimer;
 
   @override
   void initState() {
     super.initState();
     _activityService = ActivityService(userId: widget.userId);
+    _scheduleService = WorkoutScheduleService(userId: widget.userId);
+    
+    // Инициализируем сервис таймера
+    WorkoutTimerService.instance.initialize(widget.userId);
+    
     _initializeScreen();
   }
 
   @override
   void dispose() {
-    _dataUpdateTimer?.cancel();
     _activityService.dispose();
     super.dispose();
   }
@@ -56,10 +62,14 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
     setState(() => _isLoading = true);
     
     try {
-      // Загружаем только тренировки сначала
+      // Сначала загружаем основные данные (тренировки)
       await _loadWorkoutsForDate(_selectedDate);
       
-      // Статистика теперь вычисляется локально из тренировок
+      // Затем пытаемся загрузить расписание, но не блокируем основной функционал
+      _loadTodaySchedule().catchError((e) {
+        debugPrint('Не удалось загрузить расписание: $e');
+        // Не показываем ошибку пользователю, просто логируем
+      });
       
       _isInitialized = true;
     } catch (e) {
@@ -76,31 +86,39 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
 
   /// Загрузка тренировок за выбранную дату
   Future<void> _loadWorkoutsForDate(DateTime date) async {
-    // Отменяем предыдущий таймер если он есть
-    _dataUpdateTimer?.cancel();
-    
-    _dataUpdateTimer = Timer(const Duration(milliseconds: 800), () async {
-      try {
-        final workouts = await _activityService.getWorkoutsByDate(date);
-        
-        if (mounted) {
-          _cachedWorkouts = workouts;
-          _error = null;
-          setState(() {});
-        }
-      } catch (e) {
-        debugPrint('Ошибка загрузки тренировок: $e');
-        if (mounted) {
-          setState(() {
-            _error = 'Не удалось загрузить тренировки';
-            _cachedWorkouts = [];
-          });
-        }
+    try {
+      final workouts = await _activityService.getWorkoutsByDate(date);
+      
+      if (mounted) {
+        _cachedWorkouts = workouts;
+        _error = null;
+        setState(() {});
       }
-    });
+    } catch (e) {
+      debugPrint('Ошибка загрузки тренировок: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Не удалось загрузить тренировки';
+          _cachedWorkouts = [];
+        });
+      }
+    }
   }
 
-  /// Загрузка статистики тренировок
+  /// Загрузка расписания на сегодня
+  Future<void> _loadTodaySchedule() async {
+    try {
+      final schedule = await _scheduleService.getTodayWorkout();
+      
+      if (mounted) {
+        _todaySchedule = schedule;
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Ошибка загрузки расписания: $e');
+      // Не показываем ошибку пользователю, просто оставляем _todaySchedule = null
+    }
+  }
 
   /// Обработка выбора новой даты
   Future<void> _onDateSelected(DateTime date) async {
@@ -117,16 +135,20 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
   /// Обработка создания новой тренировки
   Future<void> _onCreateWorkout() async {
     try {
-      // Создаем тренировку сразу без дополнительного экрана
-      await _activityService.createWorkout(
+      // Создаем тренировку на сервере
+      final newWorkout = await _activityService.createWorkout(
         date: _selectedDate,
         // Продолжительность и группы мышц будут определяться автоматически
       );
       
-      // Очищаем кэш и перезагружаем данные
-      _cachedWorkouts = null;
-      await _activityService.clearCache(); // Очищаем кэш сервиса
+      // Мгновенно добавляем новую тренировку в локальный кэш
+      if (_cachedWorkouts != null) {
+        _cachedWorkouts!.add(newWorkout);
+        setState(() {}); // Мгновенное обновление UI
+      }
       
+      // Очищаем кэш и перезагружаем данные для синхронизации
+      await _activityService.clearCache();
       await _loadWorkoutsForDate(_selectedDate);
       
       if (mounted) {
@@ -166,6 +188,103 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
       _cachedWorkouts = null;
       await _activityService.clearCache();
       await _loadWorkoutsForDate(_selectedDate);
+    }
+  }
+
+  /// Начало тренировки
+  Future<void> _onStartWorkout(Workout workout) async {
+    try {
+      // Мгновенно обновляем локальное состояние для отзывчивости UI
+      final updatedWorkout = workout.copyWith(
+        isActive: true,
+        startedAt: DateTime.now(),
+      );
+      
+      if (_cachedWorkouts != null) {
+        final index = _cachedWorkouts!.indexWhere((w) => w.id == workout.id);
+        if (index != -1) {
+          _cachedWorkouts![index] = updatedWorkout;
+          setState(() {}); // Мгновенное обновление UI
+        }
+      }
+      
+      // Затем обновляем на сервере
+      await WorkoutTimerService.instance.startWorkout(workout);
+      
+      // Перезагружаем данные с сервера для синхронизации
+      await _activityService.clearCache();
+      await _loadWorkoutsForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Тренировка начата! Таймер запущен.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // В случае ошибки откатываем изменения
+      await _loadWorkoutsForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка начала тренировки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Завершение тренировки
+  Future<void> _onFinishWorkout() async {
+    try {
+      // Находим активную тренировку для мгновенного обновления UI
+      final activeWorkout = WorkoutTimerService.instance.activeWorkout;
+      if (activeWorkout != null && _cachedWorkouts != null) {
+        final index = _cachedWorkouts!.indexWhere((w) => w.id == activeWorkout.id);
+        if (index != -1) {
+          // Мгновенно обновляем локальное состояние
+          final currentDuration = WorkoutTimerService.instance.durationInMinutes;
+          final updatedWorkout = activeWorkout.copyWith(
+            isActive: false,
+            finishedAt: DateTime.now(),
+            duration: currentDuration,
+          );
+          _cachedWorkouts![index] = updatedWorkout;
+          setState(() {}); // Мгновенное обновление UI
+        }
+      }
+      
+      // Затем завершаем на сервере
+      await WorkoutTimerService.instance.finishWorkout();
+      
+      // Перезагружаем данные с сервера для синхронизации
+      await _activityService.clearCache();
+      await _loadWorkoutsForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Тренировка завершена!'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      // В случае ошибки откатываем изменения
+      await _loadWorkoutsForDate(_selectedDate);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка завершения тренировки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -306,6 +425,28 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Заголовок с кнопкой настроек
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Статистика',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: _onSettingsTap,
+                  icon: const Icon(
+                    Icons.settings,
+                    color: Colors.deepPurple,
+                  ),
+                  tooltip: 'Настройки расписания',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -343,6 +484,11 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
                 ),
               ],
             ),
+
+            // Информация о сегодняшней тренировке
+            RepaintBoundary(
+              child: _buildTodayWorkoutInfo(),
+            ),
           ],
         ),
       ),
@@ -377,183 +523,277 @@ class _ActivityScreenState extends State<ActivityScreen> with PerformanceMonitor
     );
   }
 
+  /// Строит информацию о сегодняшней тренировке
+  Widget _buildTodayWorkoutInfo() {
+    if (_todaySchedule != null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.deepPurple.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.today,
+              color: Colors.deepPurple,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Сегодня: ${_todaySchedule!.workoutDescription}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.deepPurple,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.weekend,
+              color: Colors.grey[600],
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Сегодня день отдыха',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   /// Строит список тренировок
   Widget _buildWorkoutsList() {
     final workouts = _cachedWorkouts ?? [];
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (workouts.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.fitness_center,
-                      size: 48,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Нет тренировок за этот день',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Нажмите + чтобы добавить тренировку',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
+    if (workouts.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.fitness_center,
+                  size: 48,
+                  color: Colors.grey[400],
                 ),
-              ),
-            )
-          else
-            ...workouts.map((workout) => _buildWorkoutItem(workout)).toList(),
-        ],
-      ),
+                const SizedBox(height: 16),
+                Text(
+                  'Нет тренировок за этот день',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Нажмите + чтобы добавить тренировку',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: workouts.map((workout) => _buildWorkoutItem(workout)).toList(),
     );
   }
 
   /// Строит элемент тренировки
   Widget _buildWorkoutItem(Workout workout) {
     return RepaintBoundary(
-      child: InkWell(
-        onTap: () => _onWorkoutTap(workout),
-        borderRadius: BorderRadius.circular(8.0),
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.grey[200]!,
-                width: 1,
-              ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
             ),
-          ),
-          child: Row(
-            children: [
-              // Иконка тренировки
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.fitness_center,
-                  color: Colors.deepPurple,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              
-              // Информация о тренировке
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        child: Column(
+          children: [
+            // Основная информация о тренировке
+            InkWell(
+              onTap: () => _onWorkoutTap(workout),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
                   children: [
-                    Text(
-                      'Тренировка ${workout.exercises.isNotEmpty ? "• ${workout.exercises.length} упражнений" : ""}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                    // Иконка тренировки
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Icon(
+                        Icons.fitness_center,
+                        color: Colors.deepPurple,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (workout.totalWeight > 0) ...[
-                          Icon(
-                            Icons.monitor_weight,
-                            size: 16,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 4),
+                    const SizedBox(width: 16),
+                    
+                    // Информация о тренировке
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            '${workout.totalWeight.toStringAsFixed(1)} кг',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
+                            'Тренировка ${workout.exercises.isNotEmpty ? "• ${workout.exercises.length} упражнений" : ""}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                        ],
-                        if (workout.duration != null) ...[
-                          Icon(
-                            Icons.schedule,
-                            size: 16,
-                            color: Colors.grey[600],
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (workout.totalWeight > 0) ...[
+                                Icon(
+                                  Icons.monitor_weight,
+                                  size: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${workout.totalWeight.toStringAsFixed(1)} кг',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                              ],
+                              if (workout.duration != null) ...[
+                                Icon(
+                                  Icons.schedule,
+                                  size: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  workout.formattedDuration,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            workout.formattedDuration,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
+                          if (workout.targetMuscleGroups.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              workout.formattedTargetMuscleGroups,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
-                    ),
-                    if (workout.targetMuscleGroups.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        workout.formattedTargetMuscleGroups,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
                       ),
-                    ],
+                    ),
+                    
+                    // Кнопка удаления тренировки
+                    IconButton(
+                      onPressed: () => _deleteWorkout(workout),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                      ),
+                      tooltip: 'Удалить тренировку',
+                    ),
                   ],
                 ),
               ),
-              
-              // Кнопка удаления тренировки
-              IconButton(
-                onPressed: () => _deleteWorkout(workout),
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                ),
-                tooltip: 'Удалить тренировку',
-              ),
-            ],
-          ),
+            ),
+            
+            // Виджет таймера
+            WorkoutTimerWidget(
+              workout: workout,
+              onStart: () => _onStartWorkout(workout),
+              onFinish: _onFinishWorkout,
+            ),
+          ],
         ),
       ),
     );
   }
 
 
-  /// Форматирует текст о количестве тренировок
-  String _getWorkoutsText(int count) {
-    if (count == 1) return 'тренировка';
-    if (count >= 2 && count <= 4) return 'тренировки';
-    return 'тренировок';
+
+  /// Обработка нажатия на настройки
+  Future<void> _onSettingsTap() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutScheduleScreen(
+          userId: widget.userId,
+        ),
+      ),
+    );
+    
+    // После возврата из настроек перезагружаем данные
+    await _loadWorkoutsForDate(_selectedDate);
+    
+    // Загружаем расписание отдельно, не блокируя основной функционал
+    _loadTodaySchedule().catchError((e) {
+      debugPrint('Не удалось обновить расписание: $e');
+    });
   }
 
   /// Удаление тренировки с подтверждением
