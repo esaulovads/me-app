@@ -18,6 +18,15 @@ export class Workout {
   @Column('int', { default: 0 })
   duration: number; // Продолжительность тренировки в минутах
 
+  @Column({ type: 'timestamp', nullable: true })
+  startedAt?: Date; // Время начала тренировки (для таймера)
+
+  @Column({ type: 'timestamp', nullable: true })
+  finishedAt?: Date; // Время завершения тренировки (для таймера)
+
+  @Column('boolean', { default: false })
+  isActive: boolean; // Активна ли тренировка (идет таймер)
+
   @Column('text', { array: true, default: '{}' })
   targetMuscleGroups: string[]; // Целевые группы мышц
 

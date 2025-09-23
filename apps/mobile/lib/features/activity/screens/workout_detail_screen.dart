@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/activity_service.dart';
+import '../services/workout_timer_service.dart';
 import '../models/workout_model.dart';
+import '../widgets/workout_timer_widget.dart';
 import 'exercise_selection_screen.dart';
 import 'exercise_sets_screen.dart';
 
@@ -172,6 +174,97 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
+  /// Начало тренировки
+  Future<void> _onStartWorkout() async {
+    try {
+      // Мгновенно обновляем локальное состояние
+      setState(() {
+        _workout = _workout.copyWith(
+          isActive: true,
+          startedAt: DateTime.now(),
+        );
+      });
+      
+      // Затем обновляем на сервере
+      await WorkoutTimerService.instance.startWorkout(_workout);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Тренировка начата! Таймер запущен.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // В случае ошибки откатываем изменения
+      setState(() {
+        _workout = _workout.copyWith(
+          isActive: false,
+          startedAt: null,
+        );
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка начала тренировки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Завершение тренировки
+  Future<void> _onFinishWorkout() async {
+    try {
+      // Мгновенно обновляем локальное состояние
+      final currentDuration = WorkoutTimerService.instance.durationInMinutes;
+      setState(() {
+        _workout = _workout.copyWith(
+          isActive: false,
+          finishedAt: DateTime.now(),
+          duration: currentDuration,
+        );
+      });
+      
+      // Затем завершаем на сервере
+      final finishedWorkout = await WorkoutTimerService.instance.finishWorkout();
+      
+      // Обновляем с данными от сервера
+      setState(() {
+        _workout = finishedWorkout;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Тренировка завершена!'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      // В случае ошибки откатываем изменения
+      setState(() {
+        _workout = _workout.copyWith(
+          isActive: true,
+          finishedAt: null,
+        );
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка завершения тренировки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -208,6 +301,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         // Информация о тренировке
         SliverToBoxAdapter(
           child: _buildWorkoutInfo(),
+        ),
+        
+        // Таймер тренировки
+        SliverToBoxAdapter(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: WorkoutTimerWidget(
+              workout: _workout,
+              onStart: _onStartWorkout,
+              onFinish: _onFinishWorkout,
+            ),
+          ),
         ),
         
         // Список упражнений

@@ -190,4 +190,70 @@ export class WorkoutService {
       averageDuration: totalWorkouts > 0 ? totalDuration / totalWorkouts : 0,
     };
   }
+
+  /**
+   * Начало тренировки (запуск таймера)
+   */
+  async startWorkout(id: string, userId: string): Promise<Workout> {
+    const workout = await this.findOne(id, userId);
+    if (!workout) {
+      throw new Error('Тренировка не найдена');
+    }
+
+    if (workout.isActive) {
+      throw new Error('Тренировка уже активна');
+    }
+
+    // Проверяем, есть ли другая активная тренировка у пользователя
+    const activeWorkout = await this.getActiveWorkout(userId);
+    if (activeWorkout) {
+      throw new Error('У вас уже есть активная тренировка. Завершите её перед началом новой.');
+    }
+
+    workout.isActive = true;
+    workout.startedAt = new Date();
+    workout.finishedAt = null;
+
+    return this.workoutRepository.save(workout);
+  }
+
+  /**
+   * Завершение тренировки (остановка таймера)
+   */
+  async finishWorkout(id: string, userId: string): Promise<Workout> {
+    const workout = await this.findOne(id, userId);
+    if (!workout) {
+      throw new Error('Тренировка не найдена');
+    }
+
+    if (!workout.isActive) {
+      throw new Error('Тренировка не активна');
+    }
+
+    const finishedAt = new Date();
+    workout.isActive = false;
+    workout.finishedAt = finishedAt;
+
+    // Рассчитываем продолжительность в минутах
+    if (workout.startedAt) {
+      const durationMs = finishedAt.getTime() - workout.startedAt.getTime();
+      const durationMinutes = Math.round(durationMs / (1000 * 60)); // Округляем до минут
+      workout.duration = durationMinutes;
+    }
+
+    return this.workoutRepository.save(workout);
+  }
+
+  /**
+   * Получение активной тренировки пользователя
+   */
+  async getActiveWorkout(userId: string): Promise<Workout | null> {
+    return this.workoutRepository.findOne({
+      where: { 
+        userId, 
+        isActive: true 
+      },
+      relations: ['exercises', 'exercises.exercise', 'exercises.sets'],
+    });
+  }
 }
