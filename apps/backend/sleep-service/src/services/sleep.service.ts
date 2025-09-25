@@ -1,20 +1,26 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { SleepSession } from '../entities/sleep-session.entity';
 import { SleepSchedule } from '../entities/sleep-schedule.entity';
 import { CreateSleepSessionDto } from '../dto/create-sleep-session.dto';
 import { UpdateSleepSessionDto } from '../dto/update-sleep-session.dto';
 import { CreateSleepScheduleDto } from '../dto/create-sleep-schedule.dto';
 import { UpdateSleepScheduleDto } from '../dto/update-sleep-schedule.dto';
+import { servicesConfig } from '../config/services.config';
 
 @Injectable()
 export class SleepService {
+  private readonly logger = new Logger(SleepService.name);
+
   constructor(
     @InjectRepository(SleepSession)
     private sleepSessionRepository: Repository<SleepSession>,
     @InjectRepository(SleepSchedule)
     private sleepScheduleRepository: Repository<SleepSchedule>,
+    private readonly httpService: HttpService,
   ) {}
 
   // Создание нового периода сна
@@ -43,7 +49,12 @@ export class SleepService {
       sleepDate,
     });
 
-    return this.sleepSessionRepository.save(sleepSession);
+    const savedSession = await this.sleepSessionRepository.save(sleepSession);
+    
+    // Автоматически обновляем коэффициент качества сна
+    await this.updateSleepQualityCoefficient(userId);
+    
+    return savedSession;
   }
 
   // Получение всех периодов сна пользователя за конкретную дату
@@ -116,7 +127,12 @@ export class SleepService {
     );
     sleepSession.sleepDate = sleepSession.sleepTime.toISOString().split('T')[0];
 
-    return this.sleepSessionRepository.save(sleepSession);
+    const updatedSession = await this.sleepSessionRepository.save(sleepSession);
+    
+    // Автоматически обновляем коэффициент качества сна
+    await this.updateSleepQualityCoefficient(userId);
+    
+    return updatedSession;
   }
 
   // Удаление периода сна
@@ -126,6 +142,9 @@ export class SleepService {
     if (result.affected === 0) {
       throw new NotFoundException('Период сна не найден');
     }
+    
+    // Автоматически обновляем коэффициент качества сна
+    await this.updateSleepQualityCoefficient(userId);
   }
 
   // Получение конкретного периода сна
@@ -224,6 +243,31 @@ export class SleepService {
     sleepSession.wakeTime = wakeTime;
     sleepSession.durationMinutes = durationMinutes;
 
-    return this.sleepSessionRepository.save(sleepSession);
+    const completedSession = await this.sleepSessionRepository.save(sleepSession);
+    
+    // Автоматически обновляем коэффициент качества сна
+    await this.updateSleepQualityCoefficient(userId);
+    
+    return completedSession;
+  }
+
+  // Автоматическое обновление коэффициента качества сна в profile-service
+  private async updateSleepQualityCoefficient(userId: string): Promise<void> {
+    try {
+      const profileServiceUrl = `${servicesConfig.profileService.baseUrl}/profiles/calculate-sleep-quality`;
+      
+      await firstValueFrom(
+        this.httpService.post(profileServiceUrl, {}, {
+          headers: {
+            'user-id': userId,
+          },
+        })
+      );
+
+      this.logger.log(`Коэффициент качества сна обновлён для пользователя ${userId}`);
+    } catch (error) {
+      this.logger.error(`Ошибка при обновлении коэффициента качества сна для пользователя ${userId}:`, error);
+      // Не прерываем выполнение основной операции, если обновление коэффициента не удалось
+    }
   }
 } 

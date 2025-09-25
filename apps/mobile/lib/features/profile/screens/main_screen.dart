@@ -14,9 +14,11 @@ import '../../sleep/services/sleep_service.dart';
 import '../../sleep/widgets/sleep_progress_bar.dart';
 import '../../sleep/sleep_screen.dart';
 import '../../activity/services/activity_service.dart';
+import '../../activity/services/workout_schedule_service.dart';
 import '../../activity/widgets/activity_progress_bar.dart';
 import '../../activity/activity_screen.dart';
 import '../../activity/models/workout_model.dart';
+import '../../activity/models/workout_schedule_model.dart';
 
 class MainScreen extends StatefulWidget {
   final String userId;
@@ -35,6 +37,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   late final NutritionService _nutritionService;
   late final SleepService _sleepService;
   late final ActivityService _activityService;
+  late final WorkoutScheduleService _workoutScheduleService;
   late final PerformanceService _performanceService;
   late final PerformanceMonitor _performanceMonitor;
   
@@ -45,6 +48,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   Map<String, dynamic>? _cachedNutritionData;
   double? _cachedSleepDuration; // Кэш для продолжительности сна
   List<Workout>? _cachedTodaysWorkouts; // Кэш для сегодняшних тренировок
+  WorkoutSchedule? _cachedTodaySchedule; // Кэш для расписания тренировок на сегодня
   
   bool _isLoading = false;
   bool _isInitialized = false;
@@ -63,6 +67,7 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     _nutritionService = NutritionService(userId: widget.userId);
     _sleepService = SleepService(userId: widget.userId);
     _activityService = ActivityService(userId: widget.userId);
+    _workoutScheduleService = WorkoutScheduleService(userId: widget.userId);
     _performanceService = PerformanceService();
     _performanceMonitor = PerformanceMonitor();
     
@@ -128,7 +133,10 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             });
             
             Future.delayed(const Duration(milliseconds: 1500), () {
-              if (mounted) _loadActivityData();
+              if (mounted) {
+                _loadActivityData();
+                _loadWorkoutScheduleData();
+              }
             });
           }
         });
@@ -247,6 +255,42 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
     });
   }
 
+  // Загрузка данных расписания тренировок с кэшированием
+  Future<void> _loadWorkoutScheduleData() async {
+    try {
+      final todaySchedule = await _workoutScheduleService.getTodayWorkout();
+      
+      if (mounted && todaySchedule != _cachedTodaySchedule) {
+        _cachedTodaySchedule = todaySchedule;
+        
+        measurePerformance('Workout schedule UI update', () {
+          setState(() {});
+        });
+      }
+    } catch (e) {
+      // Обрабатываем ошибки тихо, используем null как fallback (день отдыха)
+      if (mounted && _cachedTodaySchedule == null) {
+        _cachedTodaySchedule = null;
+        setState(() {});
+      }
+    }
+  }
+
+  // Пересчёт норм тренировок
+  Future<void> _recalculateTrainingNorms() async {
+    try {
+      await _profileService.recalculateTrainingNorms();
+      
+      // Перезагружаем профиль для получения обновлённых норм
+      _cachedProfile = null;
+      await _loadProfile();
+      
+      debugPrint('Нормы тренировок пересчитаны');
+    } catch (e) {
+      debugPrint('Ошибка пересчёта норм тренировок: $e');
+    }
+  }
+
   // Запланированная асинхронная перезагрузка для разгрузки UI потока
   void _scheduleSmartReload() {
     // Используем microtask для выполнения в следующем цикле событий
@@ -284,6 +328,11 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
           previousProfile.birthDate != _cachedProfile?.birthDate ||
           previousProfile.activityLevel != _cachedProfile?.activityLevel;
       
+      // Проверяем, изменились ли поля, влияющие на нормы тренировок
+      final shouldRecalculateTrainingNorms = previousProfile == null ||
+          previousProfile.sleepQualityCoefficient != _cachedProfile?.sleepQualityCoefficient ||
+          previousProfile.birthDate != _cachedProfile?.birthDate;
+      
       // Перезагружаем только необходимые данные асинхронно
       if (shouldReloadNutrition) {
         _cachedDailySummary = null;
@@ -302,12 +351,21 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
         _loadSleepData(); // Запускаем асинхронно
       }
       
+      // Пересчитываем нормы тренировок при необходимости
+      if (shouldRecalculateTrainingNorms) {
+        _recalculateTrainingNorms(); // Запускаем асинхронно
+      }
+      
       // Перезагружаем данные активности только при необходимости
       if (_cachedTodaysWorkouts == null) {
         _loadActivityData();
       }
       
-      debugPrint('Умная перезагрузка: питание=${shouldReloadNutrition ? "обновлено" : "сохранено"}, сон=${shouldReloadSleep ? "обновлено" : "сохранено"}');
+      // Перезагружаем данные расписания тренировок
+      _cachedTodaySchedule = null;
+      _loadWorkoutScheduleData(); // Запускаем асинхронно
+      
+      debugPrint('Умная перезагрузка: питание=${shouldReloadNutrition ? "обновлено" : "сохранено"}, сон=${shouldReloadSleep ? "обновлено" : "сохранено"}, тренировки=${shouldRecalculateTrainingNorms ? "пересчитано" : "сохранено"}');
       
     } catch (e) {
       debugPrint('Ошибка умной перезагрузки: $e');
@@ -519,15 +577,12 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
   Widget _buildActivityProgressBar(Profile profile) {
     return measurePerformance('Activity progress bar build', () {
       final workouts = _cachedTodaysWorkouts ?? <Workout>[];
-      final totalWeight = workouts.fold<double>(0.0, (sum, workout) => sum + workout.totalWeight);
-      final targetWeight = 1000.0; // Целевой вес в кг (можно сделать настраиваемым)
-      final totalWorkouts = workouts.length;
 
       return RepaintBoundary(
         child: ActivityProgressBar(
-          totalWeight: totalWeight,
-          targetWeight: targetWeight,
-          totalWorkouts: totalWorkouts,
+          todaysWorkouts: workouts,
+          todaySchedule: _cachedTodaySchedule,
+          optimalDailyTrainingMinutes: profile.optimalDailyTrainingMinutes,
           onTap: () async {
             await measureAsyncPerformance('Activity screen navigation', () async {
               await Navigator.push(
@@ -540,8 +595,10 @@ class _MainScreenState extends State<MainScreen> with PerformanceMonitorMixin {
             
             // Обновляем данные активности при возвращении
             _cachedTodaysWorkouts = null;
+            _cachedTodaySchedule = null;
             await _activityService.clearCache(); // Очищаем кэш для свежих данных
             _loadActivityData();
+            _loadWorkoutScheduleData();
           },
         ),
       );

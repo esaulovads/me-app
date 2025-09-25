@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HttpModule } from '@nestjs/axios';
 import { typeOrmConfig } from './config/typeorm.config';
 import { Exercise } from './entities/exercise.entity';
 import { Workout } from './entities/workout.entity';
@@ -26,6 +27,7 @@ import { WorkoutScheduleService } from './services/workout-schedule.service';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    HttpModule,
     TypeOrmModule.forRootAsync(typeOrmConfig),
     TypeOrmModule.forFeature([Exercise, Workout, WorkoutExercise, Set, MuscleGroup, WorkoutSchedule]),
   ],

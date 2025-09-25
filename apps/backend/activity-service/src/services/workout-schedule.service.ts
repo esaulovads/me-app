@@ -1,18 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { WorkoutSchedule } from '../entities/workout-schedule.entity';
 import { CreateWorkoutScheduleDto } from '../dto/create-workout-schedule.dto';
 import { UpdateWorkoutScheduleDto } from '../dto/update-workout-schedule.dto';
+import { servicesConfig } from '../config/services.config';
 
 /**
  * Сервис для работы с расписанием тренировок
  */
 @Injectable()
 export class WorkoutScheduleService {
+  private readonly logger = new Logger(WorkoutScheduleService.name);
+
   constructor(
     @InjectRepository(WorkoutSchedule)
     private workoutScheduleRepository: Repository<WorkoutSchedule>,
+    private readonly httpService: HttpService,
   ) {}
 
   /**
@@ -61,7 +67,12 @@ export class WorkoutScheduleService {
       });
     }
 
-    return this.workoutScheduleRepository.save(schedule);
+    const savedSchedule = await this.workoutScheduleRepository.save(schedule);
+    
+    // Уведомляем profile-service о изменении расписания для пересчёта норм тренировок
+    await this.notifyProfileServiceAboutScheduleChange(userId);
+    
+    return savedSchedule;
   }
 
   /**
@@ -77,6 +88,9 @@ export class WorkoutScheduleService {
       schedule.muscleGroupId = null;
       schedule.isFullBody = false;
       await this.workoutScheduleRepository.save(schedule);
+      
+      // Уведомляем profile-service о изменении расписания для пересчёта норм тренировок
+      await this.notifyProfileServiceAboutScheduleChange(userId);
     }
   }
 
@@ -94,5 +108,29 @@ export class WorkoutScheduleService {
       },
       relations: ['muscleGroup']
     });
+  }
+
+  /**
+   * Уведомляет profile-service об изменении расписания тренировок для пересчёта норм
+   */
+  private async notifyProfileServiceAboutScheduleChange(userId: string): Promise<void> {
+    try {
+      const url = `${servicesConfig.profileService.baseUrl}/profiles/recalculate-training-norms`;
+      
+      await firstValueFrom(
+        this.httpService.post(url, {}, {
+          headers: {
+            'user-id': userId,
+            'Content-Type': 'application/json',
+          },
+          timeout: 5000, // 5 секунд таймаут
+        })
+      );
+      
+      this.logger.log(`Нормы тренировок пересчитаны для пользователя ${userId}`);
+    } catch (error) {
+      this.logger.error(`Ошибка при пересчёте норм тренировок для пользователя ${userId}:`, error.message);
+      // Не прерываем выполнение основной операции, если пересчёт норм не удался
+    }
   }
 }

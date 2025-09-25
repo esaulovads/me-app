@@ -1,40 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../models/workout_model.dart';
+import '../models/workout_schedule_model.dart';
 
-/// Оптимизированный виджет прогресс-бара физической активности
+/// Улучшенный виджет прогресс-бара физической активности с поддержкой норм тренировок
 class ActivityProgressBar extends StatelessWidget {
-  final double totalWeight; // Общий поднятый вес сегодня в кг
-  final double targetWeight; // Целевой вес для дня в кг
-  final int totalWorkouts; // Количество тренировок сегодня
+  final List<Workout> todaysWorkouts; // Тренировки за сегодня
+  final WorkoutSchedule? todaySchedule; // Расписание на сегодня
+  final double? optimalDailyTrainingMinutes; // Оптимальное количество минут тренировок в день
   final VoidCallback? onTap; // Колбэк для нажатия на виджет
 
   const ActivityProgressBar({
     Key? key,
-    required this.totalWeight,
-    required this.targetWeight,
-    required this.totalWorkouts,
+    required this.todaysWorkouts,
+    this.todaySchedule,
+    this.optimalDailyTrainingMinutes,
     this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Вычисляем процент выполнения
-    final percentage = targetWeight > 0
-        ? (totalWeight / targetWeight).clamp(0.0, 1.0)
-        : 0.0;
-
-    // Определяем цвет прогресс-бара на основе процента выполнения
-    Color progressColor;
-    if (percentage >= 0.8) {
-      // 80%+ - зеленый (отлично)
-      progressColor = Colors.green;
-    } else if (percentage >= 0.5) {
-      // 50-79% - оранжевый (хорошо)
-      progressColor = Colors.orange;
-    } else {
-      // < 50% - красный (нужно больше активности)
-      progressColor = Colors.red;
-    }
-
+    // Определяем состояние прогресс-бара
+    final progressState = _calculateProgressState();
+    
     return RepaintBoundary(
       child: GestureDetector(
         onTap: onTap,
@@ -63,15 +51,104 @@ class ActivityProgressBar extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               
-              // Улучшенный прогресс-бар с автоматическим заполнением краев
+              // Улучшенный прогресс-бар с правильной логикой
               Expanded(
-                child: _buildEnhancedProgressBar(percentage, progressColor),
+                child: _buildTrainingProgressBar(progressState),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Рассчитывает состояние прогресса тренировок
+  _TrainingProgressState _calculateProgressState() {
+    debugPrint('ActivityProgressBar: todaySchedule=${todaySchedule?.isActive}, workouts=${todaysWorkouts.length}, optimalMinutes=$optimalDailyTrainingMinutes');
+    
+    // Проверяем, есть ли расписание на сегодня
+    if (todaySchedule == null || !todaySchedule!.isActive) {
+      return _TrainingProgressState(
+        type: _ProgressType.restDay,
+        percentage: 0.0,
+        color: Colors.grey,
+        text: 'День отдыха',
+      );
+    }
+
+    // Сегодня день тренировки - рассчитываем прогресс
+    final totalTrainingMinutes = todaysWorkouts.fold<double>(
+      0.0, 
+      (sum, workout) => sum + (workout.duration ?? 0).toDouble(),
+    );
+
+    final targetMinutes = optimalDailyTrainingMinutes ?? 30.0; // Fallback значение
+    final percentage = (totalTrainingMinutes / targetMinutes).clamp(0.0, 1.0);
+    
+    debugPrint('ActivityProgressBar: totalMinutes=$totalTrainingMinutes, targetMinutes=$targetMinutes, percentage=$percentage');
+    
+    // Определяем цвет на основе процента (как у прогресс-бара питания)
+    Color progressColor;
+    if (percentage >= 0.8) {
+      progressColor = Colors.green; // 80%+ - отлично
+    } else if (percentage >= 0.4) {
+      progressColor = Colors.orange; // 40-79% - хорошо
+    } else {
+      progressColor = Colors.red; // < 40% - нужно больше
+    }
+
+    // Определяем тип состояния
+    final type = totalTrainingMinutes > 0 ? _ProgressType.hasWorkout : _ProgressType.noWorkout;
+
+    return _TrainingProgressState(
+      type: type,
+      percentage: percentage,
+      color: progressColor,
+      text: '${totalTrainingMinutes.round()} / ${targetMinutes.round()} мин',
+    );
+  }
+
+  /// Строит прогресс-бар тренировок в зависимости от состояния
+  Widget _buildTrainingProgressBar(_TrainingProgressState state) {
+    switch (state.type) {
+      case _ProgressType.restDay:
+        return _buildRestDayBar(state);
+      case _ProgressType.noWorkout:
+        return _buildNoWorkoutBar(state);
+      case _ProgressType.hasWorkout:
+        return _buildWorkoutProgressBar(state);
+    }
+  }
+
+  /// Строит прогресс-бар для дня отдыха
+  Widget _buildRestDayBar(_TrainingProgressState state) {
+    return Container(
+      height: 12,
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Center(
+        child: Text(
+          state.text,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Строит прогресс-бар для дня без тренировки
+  Widget _buildNoWorkoutBar(_TrainingProgressState state) {
+    return _buildEnhancedProgressBar(0.0, Colors.red);
+  }
+
+  /// Строит прогресс-бар с прогрессом тренировки
+  Widget _buildWorkoutProgressBar(_TrainingProgressState state) {
+    return _buildEnhancedProgressBar(state.percentage, state.color);
   }
 
 
@@ -81,8 +158,10 @@ class ActivityProgressBar extends StatelessWidget {
     const double borderRadius = 6.0;
     const double edgeWidth = 8.0; // Ширина крайних областей
     
-    // Определяем цвет левой области (всегда заполнена если есть прогресс)
-    Color leftEdgeColor = percentage > 0 ? progressColor : Colors.grey[300]!;
+    debugPrint('ActivityProgressBar: building bar with percentage=$percentage, color=$progressColor');
+    
+    // Определяем цвет левой области (всегда заполнена)
+    Color leftEdgeColor = percentage > 0 ? progressColor : Colors.red;
     
     // Определяем цвет правой области (заполняется при 100%)
     Color rightEdgeColor = percentage >= 1.0 ? Colors.green : Colors.grey[200]!;
@@ -146,4 +225,26 @@ class ActivityProgressBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Типы состояний прогресс-бара тренировок
+enum _ProgressType {
+  restDay,    // День отдыха
+  noWorkout,  // День тренировки, но нет записанных тренировок
+  hasWorkout, // День тренировки с записанными тренировками
+}
+
+/// Состояние прогресса тренировок
+class _TrainingProgressState {
+  final _ProgressType type;
+  final double percentage;
+  final Color color;
+  final String text;
+
+  const _TrainingProgressState({
+    required this.type,
+    required this.percentage,
+    required this.color,
+    required this.text,
+  });
 }

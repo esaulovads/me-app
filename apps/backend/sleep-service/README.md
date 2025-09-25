@@ -197,6 +197,51 @@ GET /sleep/duration?date=2024-03-20
 }
 ```
 
+#### GET /sleep/sessions/range
+Получение всех периодов сна за диапазон дат (отдельный endpoint для удобства).
+
+Заголовки:
+```
+user-id: string
+```
+
+Параметры запроса:
+```
+startDate: YYYY-MM-DD (обязательный параметр)
+endDate: YYYY-MM-DD (обязательный параметр)
+```
+
+Пример запроса:
+```
+GET /sleep/sessions/range?startDate=2024-03-15&endDate=2024-03-20
+```
+
+Ответ:
+```json
+[
+  {
+    "id": "uuid",
+    "userId": "user-uuid",
+    "sleepTime": "2024-03-15T23:30:00Z",
+    "wakeTime": "2024-03-16T07:30:00Z",
+    "durationMinutes": 480,
+    "sleepDate": "2024-03-15",
+    "createdAt": "2024-03-16T07:30:00Z",
+    "updatedAt": "2024-03-16T07:30:00Z"
+  },
+  {
+    "id": "uuid2",
+    "userId": "user-uuid",
+    "sleepTime": "2024-03-16T23:00:00Z",
+    "wakeTime": "2024-03-17T07:00:00Z",
+    "durationMinutes": 480,
+    "sleepDate": "2024-03-16",
+    "createdAt": "2024-03-17T07:00:00Z",
+    "updatedAt": "2024-03-17T07:00:00Z"
+  }
+]
+```
+
 ### Расписание сна
 
 #### POST /sleep/schedule

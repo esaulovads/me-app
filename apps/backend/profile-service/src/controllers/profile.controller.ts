@@ -131,4 +131,71 @@ export class ProfileController {
 
     return this.profileService.recalculateRecommendedSleepDuration(userId);
   }
+
+  // Расчёт коэффициента качества сна за последние 2 недели
+  @Post('calculate-sleep-quality')
+  async calculateSleepQualityCoefficient(
+    @Headers('user-id') userId: string,
+  ): Promise<{ sleepQualityCoefficient: number | null; message: string }> {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    const profile = await this.profileService.calculateSleepQualityCoefficient(userId);
+    
+    return {
+      sleepQualityCoefficient: profile.sleepQualityCoefficient,
+      message: profile.sleepQualityCoefficient !== null 
+        ? `Коэффициент качества сна успешно рассчитан: ${profile.sleepQualityCoefficient}`
+        : 'Не удалось рассчитать коэффициент качества сна (недостаточно данных или не установлена норма сна)'
+    };
+  }
+
+  // Расчёт норм тренировок
+  @Post('calculate-training-norms')
+  async calculateTrainingNorms(
+    @Headers('user-id') userId: string,
+  ): Promise<{ 
+    optimalWeeklyTrainingMinutes: number | null; 
+    optimalDailyTrainingMinutes: number | null; 
+    message: string 
+  }> {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    const profile = await this.profileService.calculateTrainingNorms(userId);
+    
+    return {
+      optimalWeeklyTrainingMinutes: profile.optimalWeeklyTrainingMinutes,
+      optimalDailyTrainingMinutes: profile.optimalDailyTrainingMinutes,
+      message: profile.optimalWeeklyTrainingMinutes !== null 
+        ? `Нормы тренировок успешно рассчитаны: ${profile.optimalWeeklyTrainingMinutes} мин/неделю, ${profile.optimalDailyTrainingMinutes} мин/день`
+        : 'Не удалось рассчитать нормы тренировок (недостаточно данных)'
+    };
+  }
+
+  // Полный пересчёт всех норм тренировок (включая коэффициент качества сна)
+  @Post('recalculate-training-norms')
+  async recalculateTrainingNorms(
+    @Headers('user-id') userId: string,
+  ): Promise<{ 
+    sleepQualityCoefficient: number | null;
+    optimalWeeklyTrainingMinutes: number | null; 
+    optimalDailyTrainingMinutes: number | null; 
+    message: string 
+  }> {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    const profile = await this.profileService.recalculateTrainingNorms(userId);
+    
+    return {
+      sleepQualityCoefficient: profile.sleepQualityCoefficient,
+      optimalWeeklyTrainingMinutes: profile.optimalWeeklyTrainingMinutes,
+      optimalDailyTrainingMinutes: profile.optimalDailyTrainingMinutes,
+      message: 'Все нормы тренировок успешно пересчитаны'
+    };
+  }
 } 

@@ -36,6 +36,9 @@ class Profile {
   final double? fatTarget; // Дневная норма жиров
   final double? carbTarget; // Дневная норма углеводов
   final double? recommendedSleepDuration; // Рекомендуемая продолжительность сна в часах
+  final double? sleepQualityCoefficient; // Коэффициент качества сна
+  final double? optimalWeeklyTrainingMinutes; // Оптимальное количество минут тренировок в неделю
+  final double? optimalDailyTrainingMinutes; // Оптимальное количество минут тренировок в день
 
   Profile({
     this.name,
@@ -50,6 +53,9 @@ class Profile {
     this.fatTarget,
     this.carbTarget,
     this.recommendedSleepDuration,
+    this.sleepQualityCoefficient,
+    this.optimalWeeklyTrainingMinutes,
+    this.optimalDailyTrainingMinutes,
   });
 
   // Метод для создания копии объекта с новыми значениями
@@ -66,6 +72,9 @@ class Profile {
     double? fatTarget,
     double? carbTarget,
     double? recommendedSleepDuration,
+    double? sleepQualityCoefficient,
+    double? optimalWeeklyTrainingMinutes,
+    double? optimalDailyTrainingMinutes,
   }) {
     return Profile(
       name: name ?? this.name,
@@ -80,6 +89,9 @@ class Profile {
       fatTarget: fatTarget ?? this.fatTarget,
       carbTarget: carbTarget ?? this.carbTarget,
       recommendedSleepDuration: recommendedSleepDuration ?? this.recommendedSleepDuration,
+      sleepQualityCoefficient: sleepQualityCoefficient ?? this.sleepQualityCoefficient,
+      optimalWeeklyTrainingMinutes: optimalWeeklyTrainingMinutes ?? this.optimalWeeklyTrainingMinutes,
+      optimalDailyTrainingMinutes: optimalDailyTrainingMinutes ?? this.optimalDailyTrainingMinutes,
     );
   }
 } 
