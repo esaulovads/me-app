@@ -78,6 +78,24 @@ export class SleepController {
     return this.sleepService.getTotalSleepDuration(userId, date);
   }
 
+  // Получение всех периодов сна за диапазон дат (отдельный endpoint для удобства)
+  @Get('sessions/range')
+  async getSleepSessionsByRange(
+    @Headers('user-id') userId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Заголовок user-id обязателен');
+    }
+
+    if (!startDate || !endDate) {
+      throw new BadRequestException('Параметры startDate и endDate обязательны');
+    }
+
+    return this.sleepService.getSleepSessionsByDateRange(userId, startDate, endDate);
+  }
+
   // === Эндпоинты для работы с расписанием сна ===
 
   // Создание или обновление расписания сна
@@ -204,5 +222,11 @@ export class SleepController {
 
     const wakeTime = body?.wakeTime ? new Date(body.wakeTime) : new Date();
     return this.sleepService.completeSleepSession(id, userId, wakeTime);
+  }
+
+  // Тестовый endpoint для проверки связи
+  @Get('test')
+  async testConnection() {
+    return { message: 'Sleep service is working!', timestamp: new Date() };
   }
 } 

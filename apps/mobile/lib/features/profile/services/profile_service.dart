@@ -64,6 +64,9 @@ class ProfileService {
           carbTarget: data['carbTarget']?.toDouble(),
           recommendedSleepDuration: data['recommendedSleepDuration']?.toDouble() ?? 
               _calculateFallbackSleepDuration(data),
+          sleepQualityCoefficient: data['sleepQualityCoefficient']?.toDouble(),
+          optimalWeeklyTrainingMinutes: data['optimalWeeklyTrainingMinutes']?.toDouble(),
+          optimalDailyTrainingMinutes: data['optimalDailyTrainingMinutes']?.toDouble(),
         );
         
 
@@ -272,6 +275,26 @@ class ProfileService {
     } catch (e) {
       print('Error calculating fallback sleep duration: $e');
       return 8.0; // Безопасное значение по умолчанию
+    }
+  }
+
+  /// Пересчитывает нормы тренировок пользователя
+  Future<void> recalculateTrainingNorms() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/profiles/recalculate-training-norms'),
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': userId,
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка пересчёта норм тренировок: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Ошибка при пересчёте норм тренировок: $e');
+      rethrow;
     }
   }
 } 

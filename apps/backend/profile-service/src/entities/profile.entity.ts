@@ -250,6 +250,15 @@ export class Profile {
   @Column('float', { nullable: true })
   recommendedSleepDuration: number; // Рекомендуемая продолжительность сна
 
+  @Column('float', { nullable: true })
+  sleepQualityCoefficient: number; // Коэффициент качества сна (среднее отношение факт/норма за 2 недели)
+
+  @Column('float', { nullable: true })
+  optimalWeeklyTrainingMinutes: number; // Оптимальное количество минут тренировок в неделю
+
+  @Column('float', { nullable: true })
+  optimalDailyTrainingMinutes: number; // Оптимальное количество минут тренировок в день
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -421,6 +430,57 @@ export class Profile {
     return Number(recommendedDuration.toFixed(1));
   }
 
+  // Расчет коэффициента возраста для тренировок
+  calculateAgeCoefficient(): number | null {
+    if (!this.birthDate) {
+      return null;
+    }
+
+    // Рассчитываем возраст
+    const today = new Date();
+    const birthDate = typeof this.birthDate === 'string' ? new Date(this.birthDate) : this.birthDate;
+    const age = today.getFullYear() - birthDate.getFullYear();
+
+    // Коэффициенты возраста для тренировок
+    if (age <= 30) {
+      return 1.0; // До 30 лет - коэффициент 1
+    } else if (age >= 31 && age <= 50) {
+      return 0.8; // От 31 до 50 лет - коэффициент 0.8
+    } else {
+      return 0.6; // Больше 51 года - коэффициент 0.6
+    }
+  }
+
+  // Расчет оптимального количества минут тренировок в неделю
+  calculateOptimalWeeklyTrainingMinutes(): number | null {
+    const ageCoefficient = this.calculateAgeCoefficient();
+    
+    if (!ageCoefficient || !this.sleepQualityCoefficient) {
+      return null;
+    }
+
+    // Базовый минимум 150 минут * коэффициент качества сна * коэффициент возраста
+    const weeklyMinutes = 150 * this.sleepQualityCoefficient * ageCoefficient;
+    
+    // Округляем до целого числа
+    return Math.round(weeklyMinutes);
+  }
+
+  // Расчет оптимального количества минут тренировок в день
+  calculateOptimalDailyTrainingMinutes(trainingDaysPerWeek: number): number | null {
+    const weeklyMinutes = this.calculateOptimalWeeklyTrainingMinutes();
+    
+    if (!weeklyMinutes || trainingDaysPerWeek <= 0) {
+      return null;
+    }
+
+    // Делим недельную норму на количество дней тренировок
+    const dailyMinutes = weeklyMinutes / trainingDaysPerWeek;
+    
+    // Округляем до целого числа
+    return Math.round(dailyMinutes);
+  }
+
   // Обновляем хук для автоматического расчета всех значений
   @BeforeInsert()
   @BeforeUpdate()
@@ -438,5 +498,11 @@ export class Profile {
     this.fatTarget = this.calculateFatTarget();
     this.carbTarget = this.calculateCarbTarget();
     this.recommendedSleepDuration = this.calculateRecommendedSleepDuration();
+    
+    // Рассчитываем оптимальное количество минут тренировок в неделю
+    this.optimalWeeklyTrainingMinutes = this.calculateOptimalWeeklyTrainingMinutes();
+    
+    // Примечание: optimalDailyTrainingMinutes будет рассчитываться отдельно в сервисе,
+    // так как требует данные о расписании тренировок из activity-service
   }
 } 
