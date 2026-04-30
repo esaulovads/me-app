@@ -1,114 +1,78 @@
-# Сервис профилей для фитнес-приложения
+# Profile Service for Fitness App
 
-Этот сервис отвечает за управление профилями пользователей в фитнес-приложении, включая хранение и обновление персональных данных.
+This service manages user profiles in the fitness app, including storage and updates of personal data.
 
-## Функциональность
+## Functionality
 
-- Пошаговое создание профиля пользователя
-- Хранение персональных данных (имя, возраст, рост, вес)
-- Автоматический расчет ИМТ (индекса массы тела) на основе роста и веса
-- Определение статуса ИМТ (недостаточный вес/норма/избыточный вес/ожирение)
-- Хранение целей пользователя (набор/поддержание/снижение веса)
-- Обновление данных профиля
-- Проверка заполненности профиля
-- Расчет базового метаболизма (BMR) по формуле Миффлина-Джеора
-- Расчет общего расхода энергии (TDEE) с учетом уровня активности
-- Управление уровнем физической активности пользователя
-- Автоматический расчет рекомендуемой продолжительности сна на основе пола, возраста и уровня активности
-- Расчет дневных норм макронутриентов (белки, жиры, углеводы) с учетом цели и активности
-- Расчёт коэффициента качества сна на основе фактических данных о сне за последние 2 недели
-- Расчёт оптимального количества минут тренировок в неделю и в день с учётом возраста и качества сна
-- Автоматический пересчёт норм тренировок при изменении коэффициентов
+- Step-by-step profile setup
+- Personal data storage (name, age, height, weight)
+- Automatic BMI calculation and status detection
+- User goals management (gain/maintain/lose weight)
+- Profile completeness check
+- BMR calculation (Mifflin-St Jeor formula)
+- TDEE calculation based on activity level
+- Recommended sleep duration calculation
+- Daily macronutrient targets calculation
+- Sleep quality coefficient calculation (last 2 weeks)
+- Weekly and daily training norm calculation based on age and sleep quality
 
-## Расчёт рекомендуемой продолжительности сна
+## Recommended Sleep Duration Calculation
 
-Система автоматически рассчитывает рекомендуемую продолжительность сна по формуле:
-**Рекомендуемая продолжительность = Базовая длительность + Модификатор активности**
+Formula:
+**Recommended duration = Base duration + Activity modifier**
 
-### Базовая длительность сна (часы)
-Зависит от пола и возраста:
+### Base sleep duration (hours)
 
-| Возраст   | Мужчины | Женщины |
-|-----------|---------|---------|
-| 18–25 лет | 7.5     | 8.0     |
-| 26–35 лет | 7.5     | 8.0     |
-| 36–45 лет | 7.0     | 7.5     |
-| 46–55 лет | 7.0     | 7.5     |
-| 56–65 лет | 6.5     | 7.0     |
-| 65+ лет   | 6.5     | 6.5     |
+| Age      | Men | Women |
+|----------|-----|-------|
+| 18-25    | 7.5 | 8.0   |
+| 26-35    | 7.5 | 8.0   |
+| 36-45    | 7.0 | 7.5   |
+| 46-55    | 7.0 | 7.5   |
+| 56-65    | 6.5 | 7.0   |
+| 65+      | 6.5 | 6.5   |
 
-### Модификаторы активности (часы)
-Дополнительное время сна в зависимости от пола, возраста и уровня активности:
+### Activity modifiers (hours)
 
-**18-35 лет:**
-- Мужчины: Низкая +0.00, Умеренная +0.25, Высокая +0.50, Экстремальная +0.75
-- Женщины: Низкая +0.00, Умеренная +0.30, Высокая +0.60, Экстремальная +0.85
+**18-35 years**
+- Men: Low +0.00, Moderate +0.25, High +0.50, Extreme +0.75
+- Women: Low +0.00, Moderate +0.30, High +0.60, Extreme +0.85
 
-**36-55 лет:**
-- Мужчины: Низкая +0.00, Умеренная +0.20, Высокая +0.45, Экстремальная +0.70
-- Женщины: Низкая +0.00, Умеренная +0.25, Высокая +0.55, Экстремальная +0.80
+**36-55 years**
+- Men: Low +0.00, Moderate +0.20, High +0.45, Extreme +0.70
+- Women: Low +0.00, Moderate +0.25, High +0.55, Extreme +0.80
 
-**56+ лет:**
-- Мужчины: Низкая +0.00, Умеренная +0.15, Высокая +0.35, Экстремальная +0.60
-- Женщины: Низкая +0.00, Умеренная +0.20, Высокая +0.40, Экстремальная +0.65
+**56+ years**
+- Men: Low +0.00, Moderate +0.15, High +0.35, Extreme +0.60
+- Women: Low +0.00, Moderate +0.20, High +0.40, Extreme +0.65
 
-*Примечание: "Низкая активность" включает уровни "Нет активности" и "Небольшая активность"*
+## Sleep Quality Coefficient
 
-## Расчёт коэффициента качества сна
+The coefficient is calculated using sleep data from the last 14 days:
 
-Система автоматически рассчитывает коэффициент качества сна на основе фактических данных о сне за последние 2 недели:
+**Sleep quality coefficient = Average(actual sleep / recommended sleep) per day**
 
-**Коэффициент качества сна = Среднее(Фактическое время сна / Рекомендуемое время сна) за каждый день**
+Algorithm:
+1. Get all sleep sessions for the last 14 days
+2. Sum sleep time per day
+3. Compute actual/recommended ratio for each day
+4. Calculate arithmetic mean
+5. Round to 3 decimal places
 
-### Алгоритм расчёта:
-1. Получаются все записи о сне пользователя за последние 14 дней
-2. Для каждого дня суммируется общее время сна (если было несколько сессий сна)
-3. Рассчитывается отношение фактического времени сна к рекомендуемому для каждого дня
-4. Вычисляется среднее арифметическое всех коэффициентов
-5. Результат округляется до 3 знаков после запятой
+## Training Norm Calculation
 
-### Примеры:
-- Норма сна: 8 часов, фактически спал 6 часов каждый день → коэффициент = 0.750
+Weekly formula:
+**Optimal weekly minutes = 150 x Sleep quality coefficient x Age coefficient**
 
-## Расчёт норм тренировок
+Age coefficients:
+- Up to 30: 1.0
+- 31-50: 0.8
+- 51+: 0.6
 
-Система автоматически рассчитывает оптимальное количество минут тренировок с учётом возраста пользователя и качества его сна.
+Daily formula:
+**Optimal daily minutes = Weekly norm / Number of training days**
 
-### Формула расчёта недельной нормы:
-**Оптимальные минуты в неделю = 150 (базовый минимум) × Коэффициент качества сна × Коэффициент возраста**
-
-### Коэффициенты возраста:
-- **До 30 лет**: 1.0 (полная норма)
-- **31-50 лет**: 0.8 (снижение на 20%)
-- **51+ лет**: 0.6 (снижение на 40%)
-
-### Формула расчёта дневной нормы:
-**Оптимальные минуты в день = Недельная норма ÷ Количество дней тренировок**
-
-Количество дней тренировок определяется из расписания тренировок пользователя в activity-service.
-
-### Примеры расчёта:
-
-**Пример 1**: Пользователь 25 лет, коэффициент качества сна = 0.9, тренируется 4 дня в неделю
-- Недельная норма: 150 × 0.9 × 1.0 = 135 минут
-- Дневная норма: 135 ÷ 4 = 34 минуты
-
-**Пример 2**: Пользователь 45 лет, коэффициент качества сна = 1.2, тренируется 3 дня в неделю
-- Недельная норма: 150 × 1.2 × 0.8 = 144 минуты
-- Дневная норма: 144 ÷ 3 = 48 минут
-
-### Автоматический пересчёт:
-- Недельная норма пересчитывается при изменении коэффициента качества сна
-- Дневная норма пересчитывается при изменении недельной нормы или расписания тренировок
-- Норма сна: 7.5 часов, фактически спал 8 часов каждый день → коэффициент = 1.067
-- Норма сна: 8 часов, спал по-разному: 6ч, 7ч, 8ч, 9ч → коэффициент = 0.938
-
-### Особенности:
-- Дни без записей о сне пропускаются
-- Если нет данных за последние 2 недели, коэффициент устанавливается в null
-- Если не установлена норма сна, коэффициент не рассчитывается
-
-## Технический стек
+## Tech Stack
 
 - Node.js
 - NestJS
@@ -116,38 +80,38 @@
 - PostgreSQL
 - TypeORM
 
-## Установка и запуск
+## Installation and Launch
 
-### Предварительные требования
+### Prerequisites
 
-1. Установите PostgreSQL (если еще не установлен):
+1. Install PostgreSQL:
 ```bash
 brew install postgresql@14
 ```
 
-### Запуск сервиса
+### Service Startup
 
-1. Запустите PostgreSQL:
+1. Start PostgreSQL:
 ```bash
 brew services start postgresql@14
 ```
 
-2. Создайте базу данных:
+2. Create database:
 ```bash
 createdb fitness_profiles
 ```
 
-3. Перейдите в директорию сервиса:
+3. Open service directory:
 ```bash
 cd apps/backend/profile-service
 ```
 
-4. Установите зависимости:
+4. Install dependencies:
 ```bash
 npm install
 ```
 
-5. Создайте файл .env в директории profile-service и добавьте следующие переменные:
+5. Create `.env`:
 ```
 PORT=3001
 DB_HOST=localhost
@@ -157,425 +121,28 @@ DB_PASSWORD=postgres
 DB_NAME=fitness_profiles
 ```
 
-6. Запустите сервис:
+6. Run service:
 ```bash
-# Режим разработки
+# Development mode
 npm run start:dev
 
-# Продакшн режим
+# Production mode
 npm run build
 npm run start
 ```
 
-### Остановка сервиса
-
-1. Остановите сервис: нажмите Ctrl + C в терминале, где запущен сервис
-2. Остановите PostgreSQL:
-```bash
-brew services stop postgresql@14
-```
-
-## Тестирование через Postman
-
-1. Скачайте и установите Postman с [официального сайта](https://www.postman.com/downloads/)
-
-2. Создайте новую коллекцию "Fitness App - Profile Service"
-
-3. Добавьте следующие запросы:
-
-### Получение профиля (GET /profiles)
-
-- Метод: GET
-- URL: http://localhost:3001/profiles
-- Headers: 
-  - user-id: test-user-123
-
-### Проверка заполненности профиля (GET /profiles/complete)
-
-- Метод: GET
-- URL: http://localhost:3001/profiles/complete
-- Headers: 
-  - user-id: test-user-123
-
-### Обновление имени (PUT /profiles/name)
-
-- Метод: PUT
-- URL: http://localhost:3001/profiles/name
-- Headers: 
-  - Content-Type: application/json
-  - user-id: test-user-123
-- Body (raw JSON):
-```json
-{
-  "name": "Иван"
-}
-```
-
-### Обновление даты рождения (PUT /profiles/birth-date)
-
-- Метод: PUT
-- URL: http://localhost:3001/profiles/birth-date
-- Headers: 
-  - Content-Type: application/json
-  - user-id: test-user-123
-- Body (raw JSON):
-```json
-{
-  "birthDate": "2000-01-11"
-}
-```
-
-### Обновление роста (PUT /profiles/height)
-
-- Метод: PUT
-- URL: http://localhost:3001/profiles/height
-- Headers: 
-  - Content-Type: application/json
-  - user-id: test-user-123
-- Body (raw JSON):
-```json
-{
-  "height": 180
-}
-```
-
-### Обновление веса (PUT /profiles/weight)
-
-- Метод: PUT
-- URL: http://localhost:3001/profiles/weight
-- Headers: 
-  - Content-Type: application/json
-  - user-id: test-user-123
-- Body (raw JSON):
-```json
-{
-  "weight": 75
-}
-```
-
-### Обновление цели (PUT /profiles/goal)
-
-- Метод: PUT
-- URL: http://localhost:3001/profiles/goal
-- Headers: 
-  - Content-Type: application/json
-  - user-id: test-user-123
-- Body (raw JSON):
-```json
-{
-  "goal": "MAINTAIN_WEIGHT"
-}
-```
-
-### PUT /profiles/gender
-Обновление пола пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "gender": "MALE | FEMALE"
-}
-```
-
-### PUT /profiles/activity-level
-Обновление уровня физической активности пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "activityLevel": "SEDENTARY | LIGHTLY_ACTIVE | MODERATELY_ACTIVE | VERY_ACTIVE | EXTREMELY_ACTIVE"
-}
-```
-
-Уровни активности и их коэффициенты:
-- SEDENTARY (сидячий образ жизни) - 1.2
-- LIGHTLY_ACTIVE (легкая активность) - 1.375
-- MODERATELY_ACTIVE (умеренная активность) - 1.55
-- VERY_ACTIVE (высокая активность) - 1.725
-- EXTREMELY_ACTIVE (очень высокая активность) - 1.9
-
-## Ожидаемые ответы
-
-### GET /profiles
-
-Успешный ответ (200 OK):
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "test-user-123",
-  "name": "Иван",
-  "birthDate": "2000-01-11",
-  "age": 25,
-  "height": 180,
-  "weight": 75,
-  "bmi": 23.15,
-  "bmiStatus": "NORMAL",
-  "goal": "MAINTAIN_WEIGHT",
-  "gender": "MALE",
-  "activityLevel": "MODERATELY_ACTIVE",
-  "bmr": 1745.5,
-  "tdee": 2705.5,
-  "proteinTarget": 127.5,
-  "fatTarget": 82.5,
-  "carbTarget": 338,
-  "recommendedSleepDuration": 7.8,
-  "sleepQualityCoefficient": 0.875,
-  "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z"
-}
-```
-
-### GET /profiles/complete
-
-Успешный ответ (200 OK):
-```json
-{
-  "isComplete": true
-}
-```
-
-### PUT /profiles/*
-
-При обновлении роста или веса автоматически пересчитывается ИМТ пользователя и его статус.
-
-Статусы ИМТ:
-- UNDERWEIGHT - Недостаточный вес (ИМТ < 18.5)
-- NORMAL - Нормальный вес (ИМТ 18.5–24.9)
-- OVERWEIGHT - Избыточный вес (ИМТ 25–29.9)
-- OBESE - Ожирение (ИМТ ≥ 30)
-
-Успешный ответ (200 OK) - возвращает обновленный профиль:
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "test-user-123",
-  "name": "Иван",
-  "birthDate": "2000-01-11",
-  "age": 25,
-  "height": 180,
-  "weight": 75,
-  "bmi": 23.15,
-  "bmiStatus": "NORMAL",
-  "goal": "MAINTAIN_WEIGHT",
-  "gender": "MALE",
-  "activityLevel": "MODERATELY_ACTIVE",
-  "bmr": 1745.5,
-  "tdee": 2705.5,
-  "proteinTarget": 127.5,
-  "fatTarget": 82.5,
-  "carbTarget": 338,
-  "recommendedSleepDuration": 7.8,
-  "sleepQualityCoefficient": 0.875,
-  "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z"
-}
-```
-
-## Возможные проблемы и их решение
-
-1. **Ошибка подключения к PostgreSQL**
-   - Проверьте, что PostgreSQL запущен: `brew services list`
-   - Перезапустите PostgreSQL: `brew services restart postgresql@14`
-   - Проверьте настройки подключения в .env файле
-
-2. **Сервис не запускается**
-   - Проверьте наличие файла .env и корректность его содержимого
-   - Убедитесь, что все зависимости установлены: `npm install`
-   - Проверьте логи на наличие ошибок
-
-3. **Ошибка "Connection refused" в Postman**
-   - Убедитесь, что сервис запущен и работает на порту 3001
-   - Проверьте, что в URL используется правильный порт
-
 ## API Endpoints
 
-### GET /profiles
-Получение профиля пользователя.
-
-Заголовки:
-```
-user-id: string
-```
-
-### GET /profiles/complete
-Проверка заполненности профиля.
-
-Заголовки:
-```
-user-id: string
-```
-
-### PUT /profiles/name
-Обновление имени пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "name": "string"
-}
-```
-
-### PUT /profiles/birth-date
-Обновление даты рождения пользователя. Возраст будет рассчитан автоматически.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "birthDate": "2000-01-11"
-}
-```
-
-### PUT /profiles/height
-Обновление роста пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "height": "number"
-}
-```
-
-### PUT /profiles/weight
-Обновление веса пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "weight": "number"
-}
-```
-
-### PUT /profiles/goal
-Обновление цели пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "goal": "GAIN_WEIGHT | MAINTAIN_WEIGHT | LOSE_WEIGHT"
-}
-```
-
-### PUT /profiles/gender
-Обновление пола пользователя.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "gender": "MALE | FEMALE"
-}
-```
-
-### POST /profiles/recalculate-sleep
-Принудительный пересчёт рекомендуемой продолжительности сна.
-
-Заголовки:
-```
-user-id: string
-```
-
-### POST /profiles/calculate-sleep-quality
-Расчёт коэффициента качества сна за последние 2 недели.
-
-Заголовки:
-```
-user-id: string
-```
-
-Ответ:
-```json
-{
-  "sleepQualityCoefficient": 0.875,
-  "message": "Коэффициент качества сна успешно рассчитан: 0.875"
-}
-```
-
-Или в случае отсутствия данных:
-```json
-{
-  "sleepQualityCoefficient": null,
-  "message": "Не удалось рассчитать коэффициент качества сна (недостаточно данных или не установлена норма сна)"
-}
-```
-
-### POST /profiles/calculate-training-norms
-Расчёт норм тренировок на основе текущих данных профиля и расписания тренировок.
-
-Заголовки:
-```
-user-id: string
-```
-
-Ответ:
-```json
-{
-  "optimalWeeklyTrainingMinutes": 135,
-  "optimalDailyTrainingMinutes": 34,
-  "message": "Нормы тренировок успешно рассчитаны: 135 мин/неделю, 34 мин/день"
-}
-```
-
-### POST /profiles/recalculate-training-norms
-Полный пересчёт всех норм тренировок (включая коэффициент качества сна).
-
-Заголовки:
-```
-user-id: string
-```
-
-Ответ:
-```json
-{
-  "sleepQualityCoefficient": 0.9,
-  "optimalWeeklyTrainingMinutes": 135,
-  "optimalDailyTrainingMinutes": 34,
-  "message": "Все нормы тренировок успешно пересчитаны"
-}
-``` 
+- `GET /profiles` - get user profile
+- `GET /profiles/complete` - check profile completeness
+- `PUT /profiles/name` - update name
+- `PUT /profiles/birth-date` - update birth date
+- `PUT /profiles/height` - update height
+- `PUT /profiles/weight` - update weight
+- `PUT /profiles/goal` - update goal
+- `PUT /profiles/gender` - update gender
+- `PUT /profiles/activity-level` - update activity level
+- `POST /profiles/recalculate-sleep` - recalculate recommended sleep duration
+- `POST /profiles/calculate-sleep-quality` - calculate sleep quality coefficient
+- `POST /profiles/calculate-training-norms` - calculate training norms
+- `POST /profiles/recalculate-training-norms` - full training norms recalculation

@@ -1,14 +1,14 @@
-# Сервис авторизации для фитнес-приложения
+# Authentication Service for Fitness App
 
-Этот сервис отвечает за аутентификацию пользователей и управление их учетными записями в фитнес-приложении.
+This service is responsible for user authentication and account management in the fitness app.
 
-## Функциональность
+## Functionality
 
-- Определение новых и существующих пользователей
-- Создание новых учетных записей
-- Получение данных существующих учетных записей
+- Detection of new and existing users
+- Creation of new accounts
+- Retrieval of existing account data
 
-## Технический стек
+## Tech Stack
 
 - Node.js
 - Express
@@ -16,71 +16,71 @@
 - MongoDB
 - Mongoose
 
-## Установка и запуск
+## Installation and Launch
 
-### Предварительные требования
+### Prerequisites
 
-1. Установите MongoDB (если еще не установлена):
+1. Install MongoDB (if not installed yet):
 ```bash
 brew tap mongodb/brew
 brew install mongodb-community
 ```
 
-### Запуск сервиса
+### Service Startup
 
-1. Запустите MongoDB:
+1. Start MongoDB:
 ```bash
 brew services start mongodb-community
 ```
 
-2. Перейдите в директорию сервиса:
+2. Go to the service directory:
 ```bash
 cd apps/backend/auth-service
 ```
 
-3. Установите зависимости (если еще не установлены):
+3. Install dependencies (if not installed yet):
 ```bash
 npm install
 ```
 
-4. Создайте файл .env в директории auth-service и добавьте следующие переменные:
+4. Create a `.env` file in the `auth-service` directory and add the following variables:
 ```
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/fitness-app
 ```
 
-5. Запустите сервис:
+5. Start the service:
 ```bash
-# Режим разработки
+# Development mode
 npm run dev
 
-# Продакшн режим
+# Production mode
 npm run build
 npm start
 ```
 
-### Остановка сервиса
+### Stopping the Service
 
-1. Остановите сервис: нажмите Ctrl + C в терминале, где запущен сервис
-2. Остановите MongoDB:
+1. Stop the service: press `Ctrl + C` in the terminal where the service is running
+2. Stop MongoDB:
 ```bash
 brew services stop mongodb-community
 ```
 
-## Тестирование через Postman
+## Testing with Postman
 
-1. Скачайте и установите Postman с [официального сайта](https://www.postman.com/downloads/)
+1. Download and install Postman from the [official website](https://www.postman.com/downloads/)
 
-2. Создайте новую коллекцию "Fitness App"
+2. Create a new collection named `Fitness App`
 
-3. Добавьте следующие запросы:
+3. Add the following requests:
 
-### Аутентификация пользователя (POST /auth)
+### User Authentication (`POST /auth`)
 
-- Метод: POST
-- URL: http://localhost:3000/auth
-- Headers: 
-  - Content-Type: application/json
+- Method: `POST`
+- URL: `http://localhost:3000/auth`
+- Headers:
+  - `Content-Type: application/json`
 - Body (raw JSON):
 ```json
 {
@@ -88,18 +88,18 @@ brew services stop mongodb-community
 }
 ```
 
-### Получение данных пользователя (GET /users/:userId)
+### Get User Data (`GET /users/:userId`)
 
-- Метод: GET
-- URL: http://localhost:3000/users/test-device-123
-- Headers: не требуются
-- Body: не требуется
+- Method: `GET`
+- URL: `http://localhost:3000/users/test-device-123`
+- Headers: not required
+- Body: not required
 
-## Ожидаемые ответы
+## Expected Responses
 
-### POST /auth
+### `POST /auth`
 
-Успешный ответ (200 OK):
+Successful response (`200 OK`):
 ```json
 {
   "userId": "test-device-123",
@@ -108,9 +108,9 @@ brew services stop mongodb-community
 }
 ```
 
-### GET /users/:userId
+### `GET /users/:userId`
 
-Успешный ответ (200 OK):
+Successful response (`200 OK`):
 ```json
 {
   "userId": "test-device-123",
@@ -119,41 +119,41 @@ brew services stop mongodb-community
 }
 ```
 
-Пользователь не найден (404 Not Found):
+User not found (`404 Not Found`):
 ```json
 {
-  "error": "Пользователь не найден"
+  "error": "User not found"
 }
 ```
 
-## Возможные проблемы и их решение
+## Common Issues and Solutions
 
-1. **Ошибка подключения к MongoDB**
-   - Проверьте, что MongoDB запущена: `brew services list`
-   - Перезапустите MongoDB: `brew services restart mongodb-community`
+1. **MongoDB connection error**
+   - Check that MongoDB is running: `brew services list`
+   - Restart MongoDB: `brew services restart mongodb-community`
 
-2. **Сервис не запускается**
-   - Проверьте наличие файла .env и корректность его содержимого
-   - Убедитесь, что все зависимости установлены: `npm install`
-   - Проверьте логи на наличие ошибок
+2. **Service does not start**
+   - Check that the `.env` file exists and is valid
+   - Ensure all dependencies are installed: `npm install`
+   - Check logs for errors
 
-3. **Ошибка "Connection refused" в Postman**
-   - Убедитесь, что сервис запущен и работает на порту 3000
-   - Проверьте, что в URL используется правильный порт
+3. **"Connection refused" in Postman**
+   - Ensure the service is running on port `3000`
+   - Ensure the correct port is used in the URL
 
 ## API Endpoints
 
-### POST /auth
-Аутентификация пользователя или создание новой учетной записи.
+### `POST /auth`
+Authenticates a user or creates a new account.
 
-Запрос:
+Request:
 ```json
 {
   "deviceId": "unique-device-identifier"
 }
 ```
 
-Ответ:
+Response:
 ```json
 {
   "userId": "unique-device-identifier",
@@ -162,15 +162,15 @@ brew services stop mongodb-community
 }
 ```
 
-### GET /users/:userId
-Получение данных пользователя по ID.
+### `GET /users/:userId`
+Returns user data by ID.
 
-Ответ:
+Response:
 ```json
 {
   "userId": "unique-device-identifier",
   "createdAt": "2024-01-01T00:00:00.000Z",
   "lastLoginAt": "2024-01-01T00:00:00.000Z"
 }
-``` 
+```
 

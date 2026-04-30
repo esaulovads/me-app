@@ -1,108 +1,108 @@
 # Fitness App
 
-Фитнес-приложение для отслеживания питания, физической активности и достижения целей по здоровому образу жизни.
+A fitness application for tracking nutrition, physical activity, and achieving healthy lifestyle goals.
 
-## Архитектура
+## Architecture
 
-Проект построен на микросервисной архитектуре и состоит из следующих компонентов:
+The project is built with a microservices architecture and consists of the following components:
 
-### Бэкенд (NestJS):
-- Auth Service - авторизация и управление пользователями
-- Profile Service - управление профилями и расчет КБЖУ
-- Nutrition Service - управление питанием и рецептами
-- Sleep Service - управление расписанием сна и отслеживание его продолжительности
-- **Activity Service** - отслеживание тренировок и физической активности с автоматическим расчетом поднятого веса
-- Gamification Service - игровые механики и достижения
-- Product Scanner Service - интеграция со сканером штрихкодов
-- API Gateway - маршрутизация запросов
+### Backend (NestJS):
+- Auth Service - authorization and user management
+- Profile Service - profile management and calorie/macronutrient calculations
+- Nutrition Service - nutrition and recipe management
+- Sleep Service - sleep schedule management and sleep duration tracking
+- **Activity Service** - workout and physical activity tracking with automatic lifted-weight calculations
+- Gamification Service - game mechanics and achievements
+- Product Scanner Service - barcode scanner integration
+- API Gateway - request routing
 
-### Мобильное приложение (Flutter):
-- Кроссплатформенное приложение для iOS и Android
+### Mobile App (Flutter):
+- Cross-platform application for iOS and Android
 
-## Основной функционал
+## Core Features
 
-1. Авторизация пользователей
-2. Расчет индивидуального КБЖУ
-3. **Автоматический расчет рекомендованной продолжительности сна** - система рассчитывает персональную норму сна на основе пола, возраста и уровня физической активности пользователя с учетом научных рекомендаций
-4. **Расчёт коэффициента качества сна** - автоматический анализ качества сна на основе фактических данных за последние 2 недели с расчётом среднего отношения фактического времени сна к рекомендуемому
-5. **Расчёт норм тренировок** - автоматический расчёт оптимального количества минут тренировок в неделю и в день с учётом возраста пользователя (коэффициент возраста) и качества сна, с автоматическим пересчётом при изменении параметров
-6. Отслеживание питания с фильтрацией по дате
-7. Управление продуктами и рецептами
-8. Прогресс-бар питания с цветовой индикацией на главном экране
-9. Расчет процента потребленных калорий от дневной нормы
-10. Навигация по датам в экране питания с поддержкой относительных дат
-11. Интеграция датапикера для выбора конкретной даты
-12. Оптимизация производительности с кэшированием и debounce
-13. Улучшенная обработка ошибок сети без вывода в консоль
-14. **Детализированное отображение приёмов пищи** - каждый приём пищи отображается с временем, списком блюд и их КБЖУ, а также итоговой суммой по приёму пищи в формате: время, блюда с КБЖУ, итоговые КБЖУ приёма пищи
-15. **Полнофункциональное добавление продуктов и блюд** - пользователи могут добавлять продукты и блюда в приёмы пищи:
-    - Модальное окно для ввода веса с валидацией и предустановленными значениями
-    - Автоматический расчет КБЖУ на основе введенного веса
-    - Мгновенное добавление в приём пищи с обновлением всех данных питания
-    - Оптимизированное кэширование для максимально быстрого пользовательского опыта
-16. Сканирование штрихкодов продуктов
-17. **Управление расписанием сна** - настройка индивидуального расписания пробуждения с поддержкой разных режимов (ежедневно, будни/выходные, индивидуально по дням) и отслеживание продолжительности сна
-18. **Отслеживание тренировок** - полнофункциональная система управления тренировками:
-    - Создание тренировок с указанием даты и продолжительности
-    - **⏱️ Таймер тренировок** - отслеживание времени выполнения тренировки в режиме реального времени с глобальным отображением
-    - **📅 Расписание тренировок** - настройка еженедельного расписания с выбором групп мышц для каждого дня недели (ноги, спина, бицепс, плечи, трицепс или fullbody)
-    - Добавление упражнений из базы данных с указанием целевых групп мышц
-    - **Inline-редактирование подходов** - редактирование повторений, веса и удаление подходов прямо на экране тренировки без перехода на отдельный экран
-    - Запись подходов с количеством повторений и весом снарядов
-    - Автоматический расчет поднятого веса: `повторения × вес × количество снарядов`
-    - **Улучшенная обработка типов данных** - корректная обработка строковых и числовых значений при получении данных с сервера
-    - Статистика тренировок и прогресс пользователя с отображением сегодняшней запланированной тренировки
-17. Игровые механики и достижения
-18. Система уровней и прогресса
+1. User authorization
+2. Individual calorie/macronutrient calculation
+3. **Automatic recommended sleep duration calculation** - the system calculates a personalized sleep norm based on user gender, age, and physical activity level using science-based recommendations
+4. **Sleep quality coefficient calculation** - automatic sleep quality analysis based on actual data from the last 2 weeks with calculation of the average ratio of actual sleep time to recommended sleep time
+5. **Workout norm calculation** - automatic calculation of the optimal number of workout minutes per week and per day, considering user age (age coefficient) and sleep quality, with automatic recalculation when parameters change
+6. Nutrition tracking with date filtering
+7. Product and recipe management
+8. Nutrition progress bar with color indicators on the main screen
+9. Calculation of consumed calories as a percentage of daily norm
+10. Date navigation in the nutrition screen with relative date support
+11. Date picker integration for selecting a specific date
+12. Performance optimization with caching and debounce
+13. Improved network error handling without console output
+14. **Detailed meal display** - each meal is displayed with time, list of dishes and their calories/macronutrients, and the total meal summary in the following format: time, dishes with calories/macronutrients, total meal calories/macronutrients
+15. **Full-featured product and dish adding** - users can add products and dishes to meals:
+    - Modal for entering weight with validation and preset values
+    - Automatic calorie/macronutrient calculation based on entered weight
+    - Instant adding to meals with updates to all nutrition data
+    - Optimized caching for the fastest possible user experience
+16. Product barcode scanning
+17. **Sleep schedule management** - setting individual wake-up schedules with support for different modes (daily, weekdays/weekends, custom by day) and sleep duration tracking
+18. **Workout tracking** - a full-featured workout management system:
+    - Creating workouts with date and duration
+    - **⏱️ Workout timer** - real-time workout duration tracking with global display
+    - **📅 Workout schedule** - weekly schedule setup with muscle group selection for each day of the week (legs, back, biceps, shoulders, triceps, or full-body)
+    - Adding exercises from a database with target muscle groups
+    - **Inline set editing** - editing reps, weight, and deleting sets directly on the workout screen without navigating to a separate screen
+    - Recording sets with rep count and equipment weight
+    - Automatic lifted-weight calculation: `reps × weight × number of equipment units`
+    - **Improved data type handling** - correct handling of string and numeric values when receiving data from the server
+    - Workout statistics and user progress with display of today's planned workout
+17. Game mechanics and achievements
+18. Level and progress system
 
-## Оптимизации производительности
+## Performance Optimizations
 
-### 🚀 Реализованные оптимизации:
+### 🚀 Implemented optimizations:
 
-#### 1. Оптимизация основного потока
-- **Isolates для тяжелых вычислений**: Расчет возраста, ИМТ, TDEE и обработка данных питания вынесены в отдельные изоляты
-- **Пул изолятов**: Создается пул из 2 изолятов для параллельных вычислений
-- **Асинхронная обработка**: Все тяжелые операции выполняются асинхронно, не блокируя UI
+#### 1. Main thread optimization
+- **Isolates for heavy calculations**: Age, BMI, TDEE, and nutrition data processing are moved to separate isolates
+- **Isolate pool**: A pool of 2 isolates is created for parallel calculations
+- **Asynchronous processing**: All heavy operations run asynchronously without blocking the UI
 
-#### 2. Кэширование данных
-- **Кэширование профиля**: Данные профиля кэшируются на 5 минут
-- **Кэширование питания**: Данные питания кэшируются по дате с автоматической очисткой
-- **Локальное кэширование**: Избегаем повторных сетевых запросов для одних и тех же данных
+#### 2. Data caching
+- **Profile caching**: Profile data is cached for 5 minutes
+- **Nutrition caching**: Nutrition data is cached by date with automatic cleanup
+- **Local caching**: Avoids repeated network requests for the same data
 
-#### 3. Оптимизация сетевых запросов
-- **Батчевые операции**: Объединение нескольких запросов в один для обновления профиля
-- **Debounce**: Предотвращение частых запросов при быстром изменении данных
-- **Таймауты**: Установлены разумные таймауты для всех HTTP запросов
-- **Параллельная загрузка**: Одновременная загрузка профиля и данных питания
+#### 3. Network request optimization
+- **Batch operations**: Combining multiple requests into one for profile updates
+- **Debounce**: Prevents frequent requests during rapid data changes
+- **Timeouts**: Reasonable timeouts are set for all HTTP requests
+- **Parallel loading**: Simultaneous loading of profile and nutrition data
 
-#### 4. Оптимизация виджетов
-- **RepaintBoundary**: Добавлены границы перерисовки для изоляции обновлений
-- **Const конструкторы**: Использование const для неизменяемых виджетов
-- **Ленивая загрузка**: Данные загружаются только при необходимости
-- **Оптимизированные списки**: Использование SliverList для больших списков
+#### 4. Widget optimization
+- **RepaintBoundary**: Repaint boundaries are added to isolate updates
+- **Const constructors**: Using const for immutable widgets
+- **Lazy loading**: Data is loaded only when needed
+- **Optimized lists**: Using SliverList for large lists
 
-#### 5. Мониторинг производительности
-- **Отслеживание FPS**: Мониторинг пропущенных кадров и времени отрисовки
-- **Измерение операций**: Логирование времени выполнения критических операций
-- **Отчеты производительности**: Генерация детальных отчетов о производительности
-- **Предупреждения**: Автоматические предупреждения о медленных операциях
+#### 5. Performance monitoring
+- **FPS tracking**: Monitoring dropped frames and render time
+- **Operation measurement**: Logging execution time of critical operations
+- **Performance reports**: Generating detailed performance reports
+- **Warnings**: Automatic warnings about slow operations
 
-### 📊 Результаты оптимизации:
+### 📊 Optimization results:
 
-**До оптимизации:**
-- Пропущенные кадры: 418+ кадров
-- Время отрисовки: до 2042ms
-- Блокировка основного потока
+**Before optimization:**
+- Dropped frames: 418+ frames
+- Render time: up to 2042ms
+- Main thread blocking
 
-**После оптимизации:**
-- Значительное снижение пропущенных кадров
-- Плавная анимация и переходы
-- Быстрая загрузка данных
-- Отзывчивый пользовательский интерфейс
+**After optimization:**
+- Significant reduction in dropped frames
+- Smooth animations and transitions
+- Fast data loading
+- Responsive user interface
 
-### 🛠️ Технические детали:
+### 🛠️ Technical details:
 
-#### Архитектура производительности:
+#### Performance architecture:
 ```
 ┌─────────────────────────────────────────┐
 │           UI Thread (Main)              │
@@ -137,52 +137,52 @@
 └─────────────────────────────────────────┘
 ```
 
-#### Основные сервисы:
-- **PerformanceService**: Управление изолятами и тяжелыми вычислениями
-- **PerformanceMonitor**: Мониторинг FPS и времени выполнения операций
-- **ProfileService**: Кэширование и батчевые операции для профиля
-- **NutritionService**: Оптимизированная загрузка данных питания
+#### Core services:
+- **PerformanceService**: Manages isolates and heavy calculations
+- **PerformanceMonitor**: Monitors FPS and operation execution time
+- **ProfileService**: Caching and batch operations for profile data
+- **NutritionService**: Optimized nutrition data loading
 
-## Запуск в Docker
+## Docker Launch
 
-### Предварительная настройка
+### Prerequisites
 
-1. Создайте файлы с переменными окружения:
+1. Create environment variable files:
 
 **apps/backend/auth-service/.env:**
 ```env
-# Порт сервиса
+# Service port
 AUTH_SERVICE_PORT=3000
 
-# JWT настройки
+# JWT settings
 JWT_SECRET=your_jwt_secret_key
 JWT_EXPIRES_IN=1d
 
-# База данных
+# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 DB_DATABASE=auth_db
 
-# Настройки приложения
+# Application settings
 NODE_ENV=development
 API_PREFIX=/api/v1
 ```
 
 **apps/backend/profile-service/.env:**
 ```env
-# Порт сервиса
+# Service port
 PROFILE_SERVICE_PORT=3001
 
-# База данных
+# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 DB_DATABASE=profile_db
 
-# Настройки приложения
+# Application settings
 NODE_ENV=development
 API_PREFIX=/api/v1
 ```
@@ -220,43 +220,43 @@ DB_NAME=fitness_activity
 NODE_ENV=development
 ```
 
-### Запуск контейнеров
+### Container startup
 
-1. Соберите и запустите контейнеры:
+1. Build and start containers:
 ```bash
 docker-compose up --build
 ```
 
-2. Для запуска в фоновом режиме:
+2. Start in detached mode:
 ```bash
 docker-compose up -d --build
 ```
 
-3. Для остановки контейнеров:
+3. Stop containers:
 ```bash
 docker-compose down
 ```
 
-### Тестирование в Postman
+### Postman testing
 
-1. Импортируйте коллекции тестов из директорий сервисов:
+1. Import test collections from service directories:
    - `apps/backend/auth-service/postman/collection.json`
    - `apps/backend/profile-service/postman/collection.json`
 
-2. Сервисы будут доступны по следующим адресам:
+2. Services will be available at the following addresses:
    - Auth Service: http://localhost:3000
    - Profile Service: http://localhost:3001
    - Nutrition Service: http://localhost:3002
    - Sleep Service: http://localhost:3003
    - Activity Service: http://localhost:3004
 
-### Просмотр логов
+### Viewing logs
 
 ```bash
-# Логи всех сервисов
+# Logs for all services
 docker-compose logs -f
 
-# Логи конкретного сервиса
+# Logs for a specific service
 docker-compose logs -f auth-service
 docker-compose logs -f profile-service
 docker-compose logs -f nutrition-service
@@ -264,24 +264,24 @@ docker-compose logs -f sleep-service
 docker-compose logs -f activity-service
 ```
 
-### Управление контейнерами
+### Container management
 
 ```bash
-# Перезапуск конкретного сервиса
+# Restart a specific service
 docker-compose restart auth-service
 docker-compose restart profile-service
 docker-compose restart nutrition-service
 docker-compose restart sleep-service
 docker-compose restart activity-service
 
-# Остановка конкретного сервиса
+# Stop a specific service
 docker-compose stop auth-service
 docker-compose stop profile-service
 docker-compose stop nutrition-service
 docker-compose stop sleep-service
 docker-compose stop activity-service
 
-# Запуск конкретного сервиса
+# Start a specific service
 docker-compose start auth-service
 docker-compose start profile-service
 docker-compose start nutrition-service
@@ -289,29 +289,29 @@ docker-compose start sleep-service
 docker-compose start activity-service
 ```
 
-## Мониторинг производительности
+## Performance Monitoring
 
-### Просмотр логов производительности:
+### View performance logs:
 ```bash
 flutter logs | grep PERF
 ```
 
-### Генерация отчета производительности:
+### Generate performance report:
 ```dart
 final monitor = PerformanceMonitor();
 final report = monitor.generatePerformanceReport();
 print(report);
 ```
 
-### Измерение времени операций:
+### Measure operation time:
 ```dart
-// Синхронные операции
+// Synchronous operations
 final result = monitor.measureOperation('Operation name', () {
-  // Ваш код
+  // Your code
 });
 
-// Асинхронные операции
+// Asynchronous operations
 final result = await monitor.measureAsyncOperation('Async operation', () async {
-  // Ваш асинхронный код
+  // Your async code
 });
-``` 
+```

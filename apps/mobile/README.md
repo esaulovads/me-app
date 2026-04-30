@@ -1,56 +1,56 @@
-# Мобильное приложение Me-App
+# Me-App Mobile Application
 
-Flutter-приложение для трекинга питания, активности и профиля пользователя.
+A Flutter application for tracking nutrition, activity, and user profile.
 
-## Архитектура проекта
+## Project Architecture
 
 ```
 lib/
-├── features/               # Функциональные модули
-│   ├── auth/              # Аутентификация
-│   ├── profile/           # Профиль пользователя и онбординг
-│   ├── nutrition/         # Питание и КБЖУ
-│   ├── activity/          # Физическая активность
-│   └── gamification/      # Игрофикация
-└── main.dart              # Точка входа
+├── features/               # Feature modules
+│   ├── auth/              # Authentication
+│   ├── profile/           # User profile and onboarding
+│   ├── nutrition/         # Nutrition and calories/macronutrients
+│   ├── activity/          # Physical activity
+│   └── gamification/      # Gamification
+└── main.dart              # Entry point
 ```
 
-## Функционал питания
+## Nutrition Features
 
-### Основные экраны
-- **NutritionScreen** - главный экран питания с дневной сводкой
-- **DishSelectionScreen** - выбор продуктов и блюд для добавления в приём пищи
-- **CreateProductScreen** - создание нового продукта с КБЖУ
-- **CreateRecipeScreen** - создание рецепта из продуктов с автоматическим расчетом КБЖУ
-- **ProductPickerScreen** - выбор продуктов для добавления в рецепт
+### Main Screens
+- **NutritionScreen** - main nutrition screen with daily summary
+- **DishSelectionScreen** - selecting products and dishes to add to a meal
+- **CreateProductScreen** - creating a new product with calories/macronutrients
+- **CreateRecipeScreen** - creating a recipe from products with automatic calorie/macronutrient calculation
+- **ProductPickerScreen** - selecting products to add to a recipe
 
-### Возможности
-- ✅ Создание и управление приёмами пищи
-- ✅ Добавление продуктов и блюд в приёмы пищи с указанием веса
-- ✅ Автоматический расчёт КБЖУ
-- ✅ Поиск продуктов и блюд с дебаунсингом
-- ✅ Ленивая загрузка (пагинация) списков
-- ✅ Кэширование данных с TTL для оптимизации производительности
-- ✅ Отображение недавно использованных продуктов и блюд
-- ✅ **Создание новых продуктов** с указанием КБЖУ на 100г
-- ✅ **Создание рецептов** из продуктов с автоматическим расчетом КБЖУ на 100г
-- ✅ Редактирование времени приёмов пищи
-- ✅ Удаление приёмов пищи
+### Capabilities
+- ✅ Creating and managing meals
+- ✅ Adding products and dishes to meals with specified weight
+- ✅ Automatic calorie/macronutrient calculation
+- ✅ Product and dish search with debouncing
+- ✅ Lazy loading (pagination) for lists
+- ✅ Data caching with TTL for performance optimization
+- ✅ Displaying recently used products and dishes
+- ✅ **Creating new products** with calories/macronutrients per 100g
+- ✅ **Creating recipes** from products with automatic calorie/macronutrient calculation per 100g
+- ✅ Editing meal times
+- ✅ Deleting meals
 
-### Оптимизации производительности
-- 🚀 **Кэширование HTTP-запросов** с TTL и автоматической очисткой
-- 🚀 **Connection pooling** для HTTP-клиента
-- 🚀 **Debouncing** поисковых запросов (500мс)
-- 🚀 **Ленивая загрузка** списков по 10 элементов
-- 🚀 **RepaintBoundary** для изоляции перерисовок виджетов
-- 🚀 **AutomaticKeepAliveClientMixin** для сохранения состояния экранов
-- 🚀 **Const виджеты и стили** для минимизации пересборки
-- 🚀 **ValueKey** для оптимизации списков
-- 🚀 **Оптимизированная прокрутка** с кэшированием элементов
+### Performance Optimizations
+- 🚀 **HTTP request caching** with TTL and automatic cleanup
+- 🚀 **Connection pooling** for the HTTP client
+- 🚀 **Debouncing** search requests (500ms)
+- 🚀 **Lazy loading** of lists in batches of 10 items
+- 🚀 **RepaintBoundary** to isolate widget repaints
+- 🚀 **AutomaticKeepAliveClientMixin** to preserve screen states
+- 🚀 **Const widgets and styles** to minimize rebuilds
+- 🚀 **ValueKey** for list optimization
+- 🚀 **Optimized scrolling** with item caching
 
-### Модели данных
+### Data Models
 
-#### Product (Продукт)
+#### Product
 ```dart
 class Product {
   final String id;
@@ -63,7 +63,7 @@ class Product {
 }
 ```
 
-#### Dish (Блюдо/Рецепт)
+#### Dish (Dish/Recipe)
 ```dart
 class Dish {
   final String id;
@@ -76,7 +76,7 @@ class Dish {
 }
 ```
 
-#### DishIngredientInput (Ингредиент для создания рецепта)
+#### DishIngredientInput (Ingredient for recipe creation)
 ```dart
 class DishIngredientInput {
   final String productId;
@@ -85,14 +85,14 @@ class DishIngredientInput {
 }
 ```
 
-#### Meal (Приём пищи)
+#### Meal
 ```dart
 class Meal {
   final String id;
   final DateTime time;
   final List<MealItem> items;
   
-  // Вычисляемые поля
+  // Computed fields
   double get totalCalories;
   double get totalProteins;
   double get totalFats;
@@ -100,99 +100,99 @@ class Meal {
 }
 ```
 
-### Сервисы
+### Services
 
 #### NutritionService
-Основной сервис для работы с питанием:
+Core service for nutrition operations:
 
-**Получение данных:**
-- `getMealsForDate(DateTime date)` - приёмы пищи за день
-- `getDailySummary(DateTime date)` - сводка КБЖУ за день
-- `getProducts(limit, offset, search)` - список продуктов с пагинацией
-- `getDishes(limit, offset, search)` - список блюд с пагинацией
-- `getRecentProducts()` - недавно использованные продукты
-- `getRecentDishes()` - недавно использованные блюда
+**Data retrieval:**
+- `getMealsForDate(DateTime date)` - meals for a day
+- `getDailySummary(DateTime date)` - daily calorie/macronutrient summary
+- `getProducts(limit, offset, search)` - paginated product list
+- `getDishes(limit, offset, search)` - paginated dish list
+- `getRecentProducts()` - recently used products
+- `getRecentDishes()` - recently used dishes
 
-**Создание и модификация:**
-- `createMeal(DateTime time)` - создание приёма пищи
-- `createProduct(...)` - создание нового продукта
-- `createDish(String name, List<DishIngredientInput> ingredients)` - создание рецепта
-- `addProductToMeal(String mealId, String productId, double weight)` - добавление продукта
-- `addDishToMeal(String mealId, String dishId, double weight)` - добавление блюда
-- `updateMealTime(String mealId, DateTime newTime)` - изменение времени
-- `deleteMeal(String mealId, DateTime time)` - удаление приёма пищи
+**Creation and modification:**
+- `createMeal(DateTime time)` - create a meal
+- `createProduct(...)` - create a new product
+- `createDish(String name, List<DishIngredientInput> ingredients)` - create a recipe
+- `addProductToMeal(String mealId, String productId, double weight)` - add a product
+- `addDishToMeal(String mealId, String dishId, double weight)` - add a dish
+- `updateMealTime(String mealId, DateTime newTime)` - update time
+- `deleteMeal(String mealId, DateTime time)` - delete a meal
 
-**Кэширование:**
-- Автоматическое кэширование всех запросов с TTL
-- Умная очистка кэша при изменениях
-- Connection pooling для оптимизации сетевых запросов
+**Caching:**
+- Automatic caching for all requests with TTL
+- Smart cache invalidation on changes
+- Connection pooling for network request optimization
 
-### Особенности расчета КБЖУ рецептов
+### Recipe Calorie/Macronutrient Calculation
 
-При создании рецепта система автоматически рассчитывает КБЖУ на 100г готового блюда:
+When creating a recipe, the system automatically calculates calories/macronutrients per 100g of the prepared dish:
 
-1. **Суммирование**: Подсчитывается общее КБЖУ всех ингредиентов
-2. **Пропорциональный расчет**: КБЖУ пересчитывается на 100г исходя из общего веса рецепта
+1. **Summation**: Total calories/macronutrients of all ingredients are calculated
+2. **Proportional calculation**: Calories/macronutrients are recalculated per 100g based on total recipe weight
 
-**Пример:**
-- Рис: 600г (60% от общего веса)
-- Курица: 400г (40% от общего веса)
-- Итоговое КБЖУ на 100г = 60% КБЖУ риса + 40% КБЖУ курицы
+**Example:**
+- Rice: 600g (60% of total weight)
+- Chicken: 400g (40% of total weight)
+- Final calories/macronutrients per 100g = 60% rice calories/macronutrients + 40% chicken calories/macronutrients
 
-### Интеграция с бэкендом
+### Backend Integration
 
-Приложение взаимодействует с NestJS бэкендом через REST API:
+The app interacts with the NestJS backend through a REST API:
 
-**Эндпоинты для создания:**
-- `POST /products` - создание продукта
-- `POST /dishes` - создание блюда/рецепта
-- `POST /meals/:mealId/items` - добавление элемента в приём пищи
+**Creation endpoints:**
+- `POST /products` - create a product
+- `POST /dishes` - create a dish/recipe
+- `POST /meals/:mealId/items` - add an item to a meal
 
-**Эндпоинты для получения данных:**
-- `GET /meals?date=YYYY-MM-DD` - приёмы пищи за день  
-- `GET /products?limit=10&offset=0&search=query` - продукты с пагинацией
-- `GET /dishes?limit=10&offset=0&search=query` - блюда с пагинацией
-- `GET /recent-products` - недавние продукты
-- `GET /recent-dishes` - недавние блюда
+**Data retrieval endpoints:**
+- `GET /meals?date=YYYY-MM-DD` - meals for a day  
+- `GET /products?limit=10&offset=0&search=query` - paginated products
+- `GET /dishes?limit=10&offset=0&search=query` - paginated dishes
+- `GET /recent-products` - recent products
+- `GET /recent-dishes` - recent dishes
 
-## Установка и запуск
+## Installation and Launch
 
 ```bash
-# Установка зависимостей
+# Install dependencies
 flutter pub get
 
-# Запуск в режиме разработки
+# Run in development mode
 flutter run
 
-# Сборка для Android
+# Build for Android
 flutter build apk
 
-# Сборка для iOS  
+# Build for iOS  
 flutter build ios
 ```
 
-## Зависимости
+## Dependencies
 
 ```yaml
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0           # HTTP-клиент
-  intl: ^0.18.1          # Интернационализация и форматирование
+  http: ^1.1.0           # HTTP client
+  intl: ^0.18.1          # Internationalization and formatting
   
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0 # Линтер
+  flutter_lints: ^3.0.0 # Linter
 ```
 
-## Производительность
+## Performance
 
-Приложение оптимизировано для плавной работы:
+The app is optimized for smooth operation:
 
-- **Минимальные задержки UI** благодаря кэшированию и дебаунсингу
-- **Эффективное использование памяти** с автоматической очисткой кэша
-- **Плавная прокрутка** больших списков с ленивой загрузкой
-- **Быстрый отклик** на пользовательские действия
+- **Minimal UI delays** thanks to caching and debouncing
+- **Efficient memory usage** with automatic cache cleanup
+- **Smooth scrolling** of large lists with lazy loading
+- **Fast response** to user actions
 
-Рекомендуется тестировать на физических устройствах для оценки реальной производительности.
+Testing on physical devices is recommended to evaluate real-world performance.
