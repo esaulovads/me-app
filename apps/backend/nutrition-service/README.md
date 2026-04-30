@@ -1,33 +1,33 @@
-# Сервис питания для фитнес-приложения
+# Nutrition Service for Fitness App
 
-Этот сервис отвечает за управление питанием пользователей в фитнес-приложении, включая создание продуктов, блюд и отслеживание приемов пищи.
+This service is responsible for managing user nutrition in the fitness app, including creating products, dishes, and tracking meals.
 
-## Функциональность
+## Functionality
 
-### Управление продуктами
-- Создание новых продуктов с указанием КБЖУ на 100 грамм
-- Указание веса одной порции продукта
-- Автоматический расчет КБЖУ для порции продукта
-- Получение списка всех продуктов пользователя
-- Редактирование и удаление продуктов
+### Product Management
+- Creating new products with calories/macronutrients per 100 grams
+- Specifying serving weight for a product
+- Automatic calorie/macronutrient calculation for servings
+- Retrieving the full list of user products
+- Editing and deleting products
 
-### Управление блюдами
-- Создание новых блюд из одного или нескольких продуктов
-- Указание веса каждого продукта в составе блюда
-- Автоматический расчет итогового КБЖУ блюда
-- Расчет КБЖУ на 100 грамм блюда
-- Получение списка всех блюд пользователя
-- Редактирование и удаление блюд
+### Dish Management
+- Creating new dishes from one or more products
+- Specifying the weight of each product in a dish
+- Automatic calculation of final dish calories/macronutrients
+- Calories/macronutrients calculation per 100 grams of dish
+- Retrieving the full list of user dishes
+- Editing and deleting dishes
 
-### Управление приемами пищи
-- Создание приемов пищи с указанием времени
-- Добавление продуктов и блюд в прием пищи с указанием их веса
-- Автоматический расчет КБЖУ приема пищи
-- Получение всех приемов пищи за день
-- Расчет суммарного КБЖУ за день
-- Сравнение фактического потребления с нормой из профиля пользователя
+### Meal Management
+- Creating meals with specified time
+- Adding products and dishes to meals with specified weight
+- Automatic meal calories/macronutrients calculation
+- Retrieving all meals for a day
+- Calculating total daily calories/macronutrients
+- Comparing actual intake with the norm from the user profile
 
-## Технический стек
+## Tech Stack
 
 - Node.js
 - NestJS
@@ -35,38 +35,38 @@
 - PostgreSQL
 - TypeORM
 
-## Установка и запуск
+## Installation and Launch
 
-### Предварительные требования
+### Prerequisites
 
-1. Установите PostgreSQL (если еще не установлен):
+1. Install PostgreSQL (if not installed yet):
 ```bash
 brew install postgresql@14
 ```
 
-### Запуск сервиса
+### Service Startup
 
-1. Запустите PostgreSQL:
+1. Start PostgreSQL:
 ```bash
 brew services start postgresql@14
 ```
 
-2. Создайте базу данных:
+2. Create a database:
 ```bash
 createdb fitness_nutrition
 ```
 
-3. Перейдите в директорию сервиса:
+3. Go to the service directory:
 ```bash
 cd apps/backend/nutrition-service
 ```
 
-4. Установите зависимости:
+4. Install dependencies:
 ```bash
 npm install
 ```
 
-5. Создайте файл .env в директории nutrition-service и добавьте следующие переменные:
+5. Create a `.env` file in the `nutrition-service` directory and add the following variables:
 ```
 PORT=3002
 DB_HOST=localhost
@@ -76,38 +76,38 @@ DB_PASSWORD=postgres
 DB_NAME=fitness_nutrition
 ```
 
-6. Запустите сервис:
+6. Start the service:
 ```bash
-# Режим разработки
+# Development mode
 npm run start:dev
 
-# Продакшн режим
+# Production mode
 npm run build
 npm run start
 ```
 
-### Остановка сервиса
+### Stopping the Service
 
-1. Остановите сервис: нажмите Ctrl + C в терминале, где запущен сервис
-2. Остановите PostgreSQL:
+1. Stop the service: press `Ctrl + C` in the terminal where the service is running
+2. Stop PostgreSQL:
 ```bash
 brew services stop postgresql@14
 ```
 
 ## API Endpoints
 
-### Продукты
+### Products
 
 #### POST /products
-Создание нового продукта.
+Create a new product.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 Content-Type: application/json
 ```
 
-Тело запроса:
+Request body:
 ```json
 {
   "name": "Куриная грудка",
@@ -129,25 +129,25 @@ Content-Type: application/json
 ```
 
 #### GET /products
-Получение списка всех продуктов пользователя.
+Get the full list of user products.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-### Блюда
+### Dishes
 
 #### POST /dishes
-Создание нового блюда.
+Create a new dish.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 Content-Type: application/json
 ```
 
-Тело запроса:
+Request body:
 ```json
 {
   "name": "Жареная куриная грудка",
@@ -165,25 +165,25 @@ Content-Type: application/json
 ```
 
 #### GET /dishes
-Получение списка всех блюд пользователя.
+Get the full list of user dishes.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-### Приемы пищи
+### Meals
 
 #### POST /meals
-Создание нового приема пищи.
+Create a new meal.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 Content-Type: application/json
 ```
 
-Тело запроса:
+Request body:
 ```json
 {
   "time": "2024-03-20T12:00:00Z",
@@ -203,24 +203,24 @@ Content-Type: application/json
 ```
 
 #### GET /meals
-Получение всех приемов пищи за конкретный день.
+Get all meals for a specific day.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-Параметры запроса:
+Query parameters:
 ```
-date: YYYY-MM-DD (обязательный параметр)
+date: YYYY-MM-DD (required parameter)
 ```
 
-Пример запроса:
+Request example:
 ```
 GET /meals?date=2024-03-20
 ```
 
-Ответ:
+Response:
 ```json
 [
   {
@@ -248,24 +248,24 @@ GET /meals?date=2024-03-20
 ```
 
 #### GET /meals/summary
-Получение суммарного КБЖУ за конкретный день.
+Get total calories/macronutrients for a specific day.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-Параметры запроса:
+Query parameters:
 ```
-date: YYYY-MM-DD (обязательный параметр)
+date: YYYY-MM-DD (required parameter)
 ```
 
-Пример запроса:
+Request example:
 ```
 GET /meals/summary?date=2024-03-20
 ```
 
-Ответ:
+Response:
 ```json
 {
   "totalCalories": 1850,
@@ -276,22 +276,22 @@ GET /meals/summary?date=2024-03-20
 ```
 
 #### PUT /meals/:id
-Обновление времени приема пищи.
+Update meal time.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 Content-Type: application/json
 ```
 
-Тело запроса:
+Request body:
 ```json
 {
   "time": "2024-03-20T14:30:00Z"
 }
 ```
 
-Ответ:
+Response:
 ```json
 {
   "id": "meal-uuid",
@@ -306,16 +306,16 @@ Content-Type: application/json
 ```
 
 #### DELETE /meals/:id
-Удаление приема пищи.
+Delete a meal.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-Пример запроса:
+Request example:
 ```
 DELETE /meals/meal-uuid
 ```
 
-Ответ: HTTP 200 (без тела ответа)
+Response: HTTP 200 (without response body)

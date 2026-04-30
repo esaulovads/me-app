@@ -1,32 +1,31 @@
-# Сервис сна для фитнес-приложения
+# Sleep Service for Fitness App
 
-Этот сервис отвечает за управление сном пользователей в фитнес-приложении, включая создание периодов сна, отслеживание их продолжительности и настройку расписания сна.
+This service manages user sleep in the fitness app, including sleep sessions, sleep duration tracking, and sleep schedule configuration.
 
-## Функциональность
+## Functionality
 
-### Управление периодами сна
-- Создание новых периодов сна с указанием времени засыпания и пробуждения
-- Автоматический расчет продолжительности сна в минутах и часах
-- Поддержка нескольких периодов сна за один день (например, дневной сон)
-- Получение списка всех периодов сна за конкретную дату
-- Получение периодов сна за диапазон дат
-- Редактирование и удаление периодов сна
+### Sleep Sessions
+- Create sleep sessions with sleep and wake timestamps
+- Automatic duration calculation in minutes and hours
+- Support multiple sessions per day (for example, naps)
+- Get sessions for a specific date or date range
+- Edit and delete sessions
 
-### Управление расписанием сна
-- Создание и обновление персонального расписания сна
-- Три режима расписания:
-  - **Одинаковое время** (рекомендуется) - одно время пробуждения для всех дней
-  - **Будни и выходные** - отдельное время для будних дней и выходных
-  - **Индивидуальное** - уникальное время для каждого дня недели
-- Включение/отключение расписания
-- Получение времени пробуждения для конкретной даты
+### Sleep Schedules
+- Create and update personal sleep schedule
+- Three schedule modes:
+  - **SAME_TIME** (recommended): one wake time for all days
+  - **WEEKDAYS_WEEKENDS**: different wake times for weekdays and weekends
+  - **INDIVIDUAL**: separate wake time for each day of the week
+- Enable/disable schedule
+- Get wake time for a specific date
 
-### Анализ сна
-- Получение суммарной продолжительности сна за день
-- Автоматическое определение даты сна по времени засыпания
-- Валидация данных (время пробуждения должно быть позже времени засыпания)
+### Sleep Analysis
+- Get total daily sleep duration
+- Automatic sleep date detection by sleep time
+- Validation (wake time must be later than sleep time)
 
-## Технический стек
+## Tech Stack
 
 - Node.js
 - NestJS
@@ -34,38 +33,38 @@
 - PostgreSQL
 - TypeORM
 
-## Установка и запуск
+## Installation and Launch
 
-### Предварительные требования
+### Prerequisites
 
-1. Установите PostgreSQL (если еще не установлен):
+1. Install PostgreSQL:
 ```bash
 brew install postgresql@14
 ```
 
-### Запуск сервиса
+### Service Startup
 
-1. Запустите PostgreSQL:
+1. Start PostgreSQL:
 ```bash
 brew services start postgresql@14
 ```
 
-2. Создайте базу данных:
+2. Create database:
 ```bash
 createdb fitness_sleep
 ```
 
-3. Перейдите в директорию сервиса:
+3. Go to service directory:
 ```bash
 cd apps/backend/sleep-service
 ```
 
-4. Установите зависимости:
+4. Install dependencies:
 ```bash
 npm install
 ```
 
-5. Создайте файл .env в директории sleep-service и добавьте следующие переменные:
+5. Create `.env`:
 ```
 PORT=3003
 DB_HOST=localhost
@@ -75,540 +74,92 @@ DB_PASSWORD=postgres
 DB_NAME=fitness_sleep
 ```
 
-6. Запустите миграции для создания таблиц:
+6. Run migrations:
 ```bash
 npm run migration:run
 ```
 
-7. Запустите сервис:
+7. Start service:
 ```bash
-# Режим разработки
+# Development mode
 npm run start:dev
 
-# Продакшн режим
+# Production mode
 npm run build
 npm run start
 ```
 
-### Остановка сервиса
-
-1. Остановите сервис: нажмите Ctrl + C в терминале, где запущен сервис
-2. Остановите PostgreSQL:
-```bash
-brew services stop postgresql@14
-```
-
 ## API Endpoints
 
-### Периоды сна
+### Sleep Sessions
+- `POST /sleep` - create session
+- `GET /sleep` - get sessions by day or range
+- `GET /sleep/duration` - get total duration for day
+- `GET /sleep/sessions/range` - get sessions by date range
+- `GET /sleep/:id` - get session by id
+- `PUT /sleep/:id` - update session
+- `DELETE /sleep/:id` - delete session
 
-#### POST /sleep
-Создание нового периода сна.
+### Sleep Schedule
+- `POST /sleep/schedule` - create/update schedule
+- `GET /sleep/schedule` - get schedule
+- `PUT /sleep/schedule` - update schedule
+- `DELETE /sleep/schedule` - delete schedule
+- `GET /sleep/schedule/wake-time` - get wake time for date
 
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
+## Database Structure
 
-Тело запроса:
-```json
-{
-  "sleepTime": "2024-03-20T23:30:00Z",
-  "wakeTime": "2024-03-21T07:30:00Z"
-}
-```
+### `sleep_sessions`
+- `id` (uuid, primary key)
+- `user_id` (varchar)
+- `sleep_time` (timestamp with time zone)
+- `wake_time` (timestamp with time zone)
+- `duration_minutes` (int)
+- `sleep_date` (date)
+- `created_at` (timestamp with time zone)
+- `updated_at` (timestamp with time zone)
 
-Ответ:
-```json
-{
-  "id": "uuid",
-  "userId": "user-uuid",
-  "sleepTime": "2024-03-20T23:30:00Z",
-  "wakeTime": "2024-03-21T07:30:00Z",
-  "durationMinutes": 480,
-  "sleepDate": "2024-03-20",
-  "createdAt": "2024-03-21T07:30:00Z",
-  "updatedAt": "2024-03-21T07:30:00Z"
-}
-```
+### `sleep_schedules`
+- `id` (uuid, primary key)
+- `user_id` (varchar, unique)
+- `schedule_type` (enum: `INDIVIDUAL`, `WEEKDAYS_WEEKENDS`, `SAME_TIME`)
+- daily/weekly wake time fields in `HH:mm`
+- `is_enabled` (boolean)
+- `created_at` (timestamp with time zone)
+- `updated_at` (timestamp with time zone)
 
-#### GET /sleep
-Получение периодов сна пользователя.
+## Schedule Types
 
-Заголовки:
-```
-user-id: string
-```
-
-Параметры запроса:
-```
-date: YYYY-MM-DD (необязательный, по умолчанию - сегодня)
-startDate: YYYY-MM-DD (для диапазона дат)
-endDate: YYYY-MM-DD (для диапазона дат)
-```
-
-Примеры запросов:
-```
-GET /sleep - периоды сна за сегодня
-GET /sleep?date=2024-03-20 - периоды сна за конкретную дату
-GET /sleep?startDate=2024-03-15&endDate=2024-03-20 - периоды сна за диапазон
-```
-
-Ответ:
-```json
-[
-  {
-    "id": "uuid",
-    "userId": "user-uuid",
-    "sleepTime": "2024-03-20T23:30:00Z",
-    "wakeTime": "2024-03-21T07:30:00Z",
-    "durationMinutes": 480,
-    "sleepDate": "2024-03-20",
-    "createdAt": "2024-03-21T07:30:00Z",
-    "updatedAt": "2024-03-21T07:30:00Z"
-  }
-]
-```
-
-#### GET /sleep/duration
-Получение суммарной продолжительности сна за конкретную дату.
-
-Заголовки:
-```
-user-id: string
-```
-
-Параметры запроса:
-```
-date: YYYY-MM-DD (обязательный параметр)
-```
-
-Пример запроса:
-```
-GET /sleep/duration?date=2024-03-20
-```
-
-Ответ:
-```json
-{
-  "totalMinutes": 570,
-  "totalHours": 9.5
-}
-```
-
-#### GET /sleep/sessions/range
-Получение всех периодов сна за диапазон дат (отдельный endpoint для удобства).
-
-Заголовки:
-```
-user-id: string
-```
-
-Параметры запроса:
-```
-startDate: YYYY-MM-DD (обязательный параметр)
-endDate: YYYY-MM-DD (обязательный параметр)
-```
-
-Пример запроса:
-```
-GET /sleep/sessions/range?startDate=2024-03-15&endDate=2024-03-20
-```
-
-Ответ:
-```json
-[
-  {
-    "id": "uuid",
-    "userId": "user-uuid",
-    "sleepTime": "2024-03-15T23:30:00Z",
-    "wakeTime": "2024-03-16T07:30:00Z",
-    "durationMinutes": 480,
-    "sleepDate": "2024-03-15",
-    "createdAt": "2024-03-16T07:30:00Z",
-    "updatedAt": "2024-03-16T07:30:00Z"
-  },
-  {
-    "id": "uuid2",
-    "userId": "user-uuid",
-    "sleepTime": "2024-03-16T23:00:00Z",
-    "wakeTime": "2024-03-17T07:00:00Z",
-    "durationMinutes": 480,
-    "sleepDate": "2024-03-16",
-    "createdAt": "2024-03-17T07:00:00Z",
-    "updatedAt": "2024-03-17T07:00:00Z"
-  }
-]
-```
-
-### Расписание сна
-
-#### POST /sleep/schedule
-Создание или обновление расписания сна.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса:
-```json
-{
-  "scheduleType": "SAME_TIME",
-  "defaultWakeTime": "07:30",
-  "isEnabled": true
-}
-```
-
-Или для режима "Будни и выходные":
-```json
-{
-  "scheduleType": "WEEKDAYS_WEEKENDS",
-  "weekdaysWakeTime": "07:00",
-  "weekendsWakeTime": "09:00",
-  "isEnabled": true
-}
-```
-
-Или для индивидуального режима:
-```json
-{
-  "scheduleType": "INDIVIDUAL",
-  "mondayWakeTime": "07:00",
-  "tuesdayWakeTime": "07:00",
-  "wednesdayWakeTime": "07:00",
-  "thursdayWakeTime": "07:00",
-  "fridayWakeTime": "07:00",
-  "saturdayWakeTime": "09:00",
-  "sundayWakeTime": "09:00",
-  "isEnabled": true
-}
-```
-
-Ответ:
-```json
-{
-  "id": "uuid",
-  "userId": "user-uuid",
-  "scheduleType": "SAME_TIME",
-  "defaultWakeTime": "07:30",
-  "isEnabled": true,
-  "createdAt": "2024-03-21T08:00:00Z",
-  "updatedAt": "2024-03-21T08:00:00Z"
-}
-```
-
-#### GET /sleep/schedule
-Получение расписания сна пользователя.
-
-Заголовки:
-```
-user-id: string
-```
-
-Ответ (если расписание настроено):
-```json
-{
-  "id": "uuid",
-  "userId": "user-uuid",
-  "scheduleType": "SAME_TIME",
-  "defaultWakeTime": "07:30",
-  "isEnabled": true,
-  "createdAt": "2024-03-21T08:00:00Z",
-  "updatedAt": "2024-03-21T08:00:00Z"
-}
-```
-
-Ответ (если расписание не настроено):
-```json
-{
-  "message": "Расписание сна не настроено"
-}
-```
-
-#### PUT /sleep/schedule
-Обновление расписания сна.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса (все поля необязательные):
-```json
-{
-  "scheduleType": "WEEKDAYS_WEEKENDS",
-  "weekdaysWakeTime": "06:30",
-  "weekendsWakeTime": "08:30",
-  "isEnabled": true
-}
-```
-
-#### DELETE /sleep/schedule
-Удаление расписания сна.
-
-Заголовки:
-```
-user-id: string
-```
-
-Ответ:
-```json
-{
-  "message": "Расписание сна успешно удалено"
-}
-```
-
-#### GET /sleep/schedule/wake-time
-Получение времени пробуждения на конкретную дату согласно расписанию.
-
-Заголовки:
-```
-user-id: string
-```
-
-Параметры запроса:
-```
-date: YYYY-MM-DD (обязательный параметр)
-```
-
-Пример запроса:
-```
-GET /sleep/schedule/wake-time?date=2024-03-20
-```
-
-Ответ:
-```json
-{
-  "date": "2024-03-20",
-  "wakeTime": "07:30"
-}
-```
-
-#### GET /sleep/:id
-Получение конкретного периода сна.
-
-Заголовки:
-```
-user-id: string
-```
-
-Пример запроса:
-```
-GET /sleep/uuid
-```
-
-Ответ:
-```json
-{
-  "id": "uuid",
-  "userId": "user-uuid",
-  "sleepTime": "2024-03-20T23:30:00Z",
-  "wakeTime": "2024-03-21T07:30:00Z",
-  "durationMinutes": 480,
-  "sleepDate": "2024-03-20",
-  "createdAt": "2024-03-21T07:30:00Z",
-  "updatedAt": "2024-03-21T07:30:00Z"
-}
-```
-
-#### PUT /sleep/:id
-Обновление периода сна.
-
-Заголовки:
-```
-user-id: string
-Content-Type: application/json
-```
-
-Тело запроса (все поля необязательные):
-```json
-{
-  "sleepTime": "2024-03-20T23:00:00Z",
-  "wakeTime": "2024-03-21T08:00:00Z"
-}
-```
-
-Ответ:
-```json
-{
-  "id": "uuid",
-  "userId": "user-uuid",
-  "sleepTime": "2024-03-20T23:00:00Z",
-  "wakeTime": "2024-03-21T08:00:00Z",
-  "durationMinutes": 540,
-  "sleepDate": "2024-03-20",
-  "createdAt": "2024-03-21T07:30:00Z",
-  "updatedAt": "2024-03-21T08:15:00Z"
-}
-```
-
-#### DELETE /sleep/:id
-Удаление периода сна.
-
-Заголовки:
-```
-user-id: string
-```
-
-Пример запроса:
-```
-DELETE /sleep/uuid
-```
-
-Ответ:
-```json
-{
-  "message": "Период сна успешно удален"
-}
-```
-
-## Структура базы данных
-
-### Таблица sleep_sessions
-
-| Поле | Тип | Описание |
-|------|-----|----------|
-| id | uuid | Первичный ключ |
-| user_id | varchar | Идентификатор пользователя |
-| sleep_time | timestamp with time zone | Время засыпания |
-| wake_time | timestamp with time zone | Время пробуждения |
-| duration_minutes | int | Продолжительность сна в минутах |
-| sleep_date | date | Дата сна (по времени засыпания) |
-| created_at | timestamp with time zone | Время создания записи |
-| updated_at | timestamp with time zone | Время последнего обновления |
-
-### Таблица sleep_schedules
-
-| Поле | Тип | Описание |
-|------|-----|----------|
-| id | uuid | Первичный ключ |
-| user_id | varchar | Идентификатор пользователя (уникальный) |
-| schedule_type | enum | Тип расписания (INDIVIDUAL, WEEKDAYS_WEEKENDS, SAME_TIME) |
-| monday_wake_time | varchar | Время пробуждения в понедельник (HH:mm) |
-| tuesday_wake_time | varchar | Время пробуждения во вторник (HH:mm) |
-| wednesday_wake_time | varchar | Время пробуждения в среду (HH:mm) |
-| thursday_wake_time | varchar | Время пробуждения в четверг (HH:mm) |
-| friday_wake_time | varchar | Время пробуждения в пятницу (HH:mm) |
-| saturday_wake_time | varchar | Время пробуждения в субботу (HH:mm) |
-| sunday_wake_time | varchar | Время пробуждения в воскресенье (HH:mm) |
-| weekdays_wake_time | varchar | Время пробуждения в будни (HH:mm) |
-| weekends_wake_time | varchar | Время пробуждения в выходные (HH:mm) |
-| default_wake_time | varchar | Время пробуждения по умолчанию (HH:mm) |
-| is_enabled | boolean | Включено ли расписание |
-| created_at | timestamp with time zone | Время создания записи |
-| updated_at | timestamp with time zone | Время последнего обновления |
-
-### Индексы
-- `IDX_sleep_sessions_user_id` - по идентификатору пользователя
-- `IDX_sleep_sessions_user_id_sleep_date` - составной индекс по пользователю и дате сна
-- `IDX_sleep_sessions_sleep_date` - по дате сна
-- `IDX_sleep_schedules_user_id` - по идентификатору пользователя
-
-## Типы расписания сна
-
-### SAME_TIME (Рекомендуется)
-Одинаковое время пробуждения для всех дней недели. Этот режим обеспечивает лучшее качество сна за счет стабильного циркадного ритма.
+### SAME_TIME
+One wake time for all week days. Best for stable circadian rhythm.
 
 ### WEEKDAYS_WEEKENDS
-Отдельное время пробуждения для будних дней (понедельник-пятница) и выходных (суббота-воскресенье).
+Different wake times for weekdays and weekends.
 
 ### INDIVIDUAL
-Индивидуальное время пробуждения для каждого дня недели. Наиболее гибкий, но может негативно влиять на качество сна.
+Custom wake time for each day. Most flexible mode.
 
-## Примеры использования
+## Errors and Validation
 
-### Создание периода ночного сна
-```bash
-curl -X POST http://localhost:3003/sleep \
-  -H "Content-Type: application/json" \
-  -H "user-id: user-123" \
-  -d '{
-    "sleepTime": "2024-03-20T23:30:00Z",
-    "wakeTime": "2024-03-21T07:30:00Z"
-  }'
-```
+- `400 Bad Request` - wake time must be later than sleep time
+- `400 Bad Request` - `user-id` header is required
+- `400 Bad Request` - invalid date/time format
+- `400 Bad Request` - invalid wake time format (must be `HH:mm`)
+- `404 Not Found` - sleep session not found
+- `404 Not Found` - sleep schedule not found
 
-### Создание расписания сна (одинаковое время)
-```bash
-curl -X POST http://localhost:3003/sleep/schedule \
-  -H "Content-Type: application/json" \
-  -H "user-id: user-123" \
-  -d '{
-    "scheduleType": "SAME_TIME",
-    "defaultWakeTime": "07:30",
-    "isEnabled": true
-  }'
-```
-
-### Создание расписания сна (будни и выходные)
-```bash
-curl -X POST http://localhost:3003/sleep/schedule \
-  -H "Content-Type: application/json" \
-  -H "user-id: user-123" \
-  -d '{
-    "scheduleType": "WEEKDAYS_WEEKENDS",
-    "weekdaysWakeTime": "07:00",
-    "weekendsWakeTime": "09:00",
-    "isEnabled": true
-  }'
-```
-
-### Получение расписания сна
-```bash
-curl -X GET http://localhost:3003/sleep/schedule \
-  -H "user-id: user-123"
-```
-
-### Получение времени пробуждения на дату
-```bash
-curl -X GET "http://localhost:3003/sleep/schedule/wake-time?date=2024-03-20" \
-  -H "user-id: user-123"
-```
-
-### Получение всего сна за день
-```bash
-curl -X GET "http://localhost:3003/sleep?date=2024-03-20" \
-  -H "user-id: user-123"
-```
-
-### Получение общей продолжительности сна
-```bash
-curl -X GET "http://localhost:3003/sleep/duration?date=2024-03-20" \
-  -H "user-id: user-123"
-```
-
-## Ошибки и валидация
-
-### Возможные ошибки:
-- `400 Bad Request` - Время пробуждения должно быть позже времени засыпания
-- `400 Bad Request` - Заголовок user-id обязателен
-- `400 Bad Request` - Невалидный формат даты/времени
-- `400 Bad Request` - Невалидный формат времени (должно быть HH:mm)
-- `404 Not Found` - Период сна не найден
-- `404 Not Found` - Расписание сна не найдено
-
-### Формат времени:
-- Временные метки для периодов сна: ISO 8601 с временной зоной (`2024-03-20T23:30:00Z`)
-- Время пробуждения в расписании: формат HH:mm (`07:30`, `23:15`)
-
-## Миграции
-
-Для работы с миграциями используйте следующие команды:
+## Migrations
 
 ```bash
-# Запуск миграций
+# Run migrations
 npm run migration:run
 
-# Создание новой миграции
+# Create migration
 npm run migration:create -- MigrationName
 
-# Генерация миграции на основе изменений в сущностях
+# Generate migration from entity changes
 npm run migration:generate -- MigrationName
 
-# Откат последней миграции
+# Revert last migration
 npm run migration:revert
-``` 
+```

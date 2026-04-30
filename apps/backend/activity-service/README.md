@@ -1,34 +1,34 @@
-# Сервис отслеживания тренировок для фитнес-приложения
+# Workout Tracking Service for Fitness App
 
-Этот сервис отвечает за управление тренировками пользователей в фитнес-приложении, включая создание тренировок, добавление упражнений и отслеживание подходов с автоматическим расчетом поднятого веса.
+This service is responsible for managing user workouts in the fitness app, including workout creation, adding exercises, and tracking sets with automatic lifted-weight calculation.
 
-## Функциональность
+## Functionality
 
-### Управление упражнениями
-- Создание новых упражнений в базе данных с указанием целевой группы мышц
-- Указание количества снарядов, необходимых для выполнения упражнения
-- Получение списка всех упражнений с поиском и фильтрацией по группам мышц
-- Редактирование и удаление упражнений
+### Exercise Management
+- Creating new exercises in the database with target muscle groups
+- Specifying the number of equipment units required for an exercise
+- Retrieving all exercises with search and muscle-group filtering
+- Editing and deleting exercises
 
-### Управление тренировками
-- Создание новых тренировок с указанием даты
-- Указание продолжительности тренировки и целевых групп мышц
-- Автоматический расчет общего поднятого веса в тренировке
-- Получение тренировок за день, период или всех тренировок пользователя
-- Статистика тренировок пользователя
+### Workout Management
+- Creating new workouts with a specified date
+- Specifying workout duration and target muscle groups
+- Automatic total lifted-weight calculation for workouts
+- Retrieving workouts for a day, date range, or all user workouts
+- User workout statistics
 
-### Управление упражнениями в тренировке
-- Добавление упражнений из базы данных в конкретную тренировку
-- Автоматическое обновление целевых групп мышц тренировки
-- Расчет общего веса, поднятого в рамках одного упражнения
+### Workout Exercise Management
+- Adding exercises from the database to a specific workout
+- Automatic update of workout target muscle groups
+- Calculation of total weight lifted within a specific exercise
 
-### Управление подходами
-- Добавление подходов к упражнениям с указанием количества повторений и веса
-- Автоматический расчет веса на лету: `повторения × вес снаряда × количество снарядов`
-- Массовое создание подходов для упражнения
-- Редактирование и удаление подходов с пересчетом общего веса
+### Set Management
+- Adding sets to exercises with reps and weight
+- Automatic real-time weight calculation: `reps × equipment weight × number of equipment units`
+- Bulk creation of exercise sets
+- Editing and deleting sets with total weight recalculation
 
-## Технический стек
+## Tech Stack
 
 - Node.js
 - NestJS
@@ -36,38 +36,38 @@
 - PostgreSQL
 - TypeORM
 
-## Установка и запуск
+## Installation and Launch
 
-### Предварительные требования
+### Prerequisites
 
-1. Установите PostgreSQL (если еще не установлен):
+1. Install PostgreSQL (if not installed yet):
 ```bash
 brew install postgresql@14
 ```
 
-### Запуск сервиса
+### Service Startup
 
-1. Запустите PostgreSQL:
+1. Start PostgreSQL:
 ```bash
 brew services start postgresql@14
 ```
 
-2. Создайте базу данных:
+2. Create a database:
 ```bash
 createdb fitness_activity
 ```
 
-3. Перейдите в директорию сервиса:
+3. Go to the service directory:
 ```bash
 cd apps/backend/activity-service
 ```
 
-4. Установите зависимости:
+4. Install dependencies:
 ```bash
 npm install
 ```
 
-5. Создайте файл .env в директории activity-service и добавьте следующие переменные:
+5. Create a `.env` file in the `activity-service` directory and add the following variables:
 ```
 PORT=3004
 DB_HOST=localhost
@@ -77,37 +77,37 @@ DB_PASSWORD=postgres
 DB_NAME=fitness_activity
 ```
 
-6. Запустите миграции:
+6. Run migrations:
 ```bash
 npm run migration:run
 ```
 
-7. Запустите сервис:
+7. Start the service:
 ```bash
-# Режим разработки
+# Development mode
 npm run start:dev
 
-# Продакшн режим
+# Production mode
 npm run build
 npm run start
 ```
 
-### Остановка сервиса
+### Stopping the Service
 
-1. Остановите сервис: нажмите Ctrl + C в терминале, где запущен сервис
-2. Остановите PostgreSQL:
+1. Stop the service: press `Ctrl + C` in the terminal where the service is running
+2. Stop PostgreSQL:
 ```bash
 brew services stop postgresql@14
 ```
 
 ## API Endpoints
 
-### Упражнения
+### Exercises
 
 #### POST /exercises
-Создание нового упражнения в базе данных.
+Create a new exercise in the database.
 
-Тело запроса:
+Request body:
 ```json
 {
   "name": "Жим лежа",
@@ -123,31 +123,31 @@ brew services stop postgresql@14
 ```
 
 #### GET /exercises
-Получение списка всех упражнений с поиском и фильтрацией.
+Get all exercises with search and filtering.
 
-Параметры запроса:
+Query parameters:
 ```
-limit: number (по умолчанию 50)
-offset: number (по умолчанию 0)
-search: string (поиск по названию)
-muscleGroup: string (фильтр по группе мышц)
+limit: number (default 50)
+offset: number (default 0)
+search: string (search by name)
+muscleGroup: string (muscle group filter)
 ```
 
 #### GET /exercises/muscle-groups
-Получение списка всех уникальных групп мышц.
+Get all unique muscle groups.
 
-### Тренировки
+### Workouts
 
 #### POST /workouts
-Создание новой тренировки.
+Create a new workout.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 Content-Type: application/json
 ```
 
-Тело запроса:
+Request body:
 ```json
 {
   "date": "2024-03-20",
@@ -157,49 +157,49 @@ Content-Type: application/json
 ```
 
 #### GET /workouts
-Получение списка всех тренировок пользователя.
+Get all user workouts.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-Параметры запроса:
+Query parameters:
 ```
-limit: number (по умолчанию 20)
-offset: number (по умолчанию 0)
-startDate: YYYY-MM-DD (фильтр от даты)
-endDate: YYYY-MM-DD (фильтр до даты)
+limit: number (default 20)
+offset: number (default 0)
+startDate: YYYY-MM-DD (from date filter)
+endDate: YYYY-MM-DD (to date filter)
 ```
 
 #### GET /workouts/by-date
-Получение всех тренировок за конкретный день.
+Get all workouts for a specific day.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-Параметры запроса:
+Query parameters:
 ```
-date: YYYY-MM-DD (обязательный параметр)
+date: YYYY-MM-DD (required parameter)
 ```
 
 #### GET /workouts/statistics
-Получение статистики тренировок пользователя.
+Get user workout statistics.
 
-Заголовки:
+Headers:
 ```
 user-id: string
 ```
 
-Параметры запроса:
+Query parameters:
 ```
-startDate: YYYY-MM-DD (необязательный)
-endDate: YYYY-MM-DD (необязательный)
+startDate: YYYY-MM-DD (optional)
+endDate: YYYY-MM-DD (optional)
 ```
 
-Ответ:
+Response:
 ```json
 {
   "totalWorkouts": 25,
@@ -210,12 +210,12 @@ endDate: YYYY-MM-DD (необязательный)
 }
 ```
 
-### Упражнения в тренировке
+### Workout Exercises
 
 #### POST /workout-exercises
-Добавление упражнения в тренировку.
+Add an exercise to a workout.
 
-Тело запроса:
+Request body:
 ```json
 {
   "workoutId": "workout-uuid",
@@ -224,14 +224,14 @@ endDate: YYYY-MM-DD (необязательный)
 ```
 
 #### GET /workout-exercises/by-workout/:workoutId
-Получение всех упражнений конкретной тренировки.
+Get all exercises for a specific workout.
 
-### Подходы
+### Sets
 
 #### POST /sets
-Создание нового подхода.
+Create a new set.
 
-Тело запроса:
+Request body:
 ```json
 {
   "workoutExerciseId": "workout-exercise-uuid",
@@ -241,9 +241,9 @@ endDate: YYYY-MM-DD (необязательный)
 ```
 
 #### POST /sets/bulk/:workoutExerciseId
-Массовое создание подходов для упражнения.
+Bulk create sets for an exercise.
 
-Тело запроса:
+Request body:
 ```json
 [
   {
@@ -262,9 +262,9 @@ endDate: YYYY-MM-DD (необязательный)
 ```
 
 #### PUT /sets/:id
-Обновление подхода.
+Update a set.
 
-Тело запроса:
+Request body:
 ```json
 {
   "reps": 12,
@@ -273,28 +273,28 @@ endDate: YYYY-MM-DD (необязательный)
 ```
 
 #### DELETE /sets/:id
-Удаление подхода.
+Delete a set.
 
-## Расчет веса
+## Weight Calculation
 
-Система автоматически рассчитывает поднятый вес на нескольких уровнях:
+The system automatically calculates lifted weight on multiple levels:
 
-### Вес подхода
-Рассчитывается при создании/обновлении подхода:
+### Set Weight
+Calculated when creating/updating a set:
 ```
-Вес подхода = количество повторений × вес снаряда × количество снарядов
-```
-
-### Вес упражнения в тренировке
-Рассчитывается как сумма всех подходов упражнения:
-```
-Вес упражнения = сумма весов всех подходов
+Set weight = number of reps × equipment weight × number of equipment units
 ```
 
-### Общий вес тренировки
-Рассчитывается как сумма весов всех упражнений в тренировке:
+### Exercise Weight in Workout
+Calculated as the sum of all sets for the exercise:
 ```
-Общий вес тренировки = сумма весов всех упражнений
+Exercise weight = sum of all set weights
 ```
 
-Все расчеты происходят автоматически при добавлении, изменении или удалении подходов, что обеспечивает актуальность данных в режиме реального времени.
+### Total Workout Weight
+Calculated as the sum of weights of all workout exercises:
+```
+Total workout weight = sum of all exercise weights
+```
+
+All calculations are performed automatically when sets are added, changed, or deleted, ensuring real-time data consistency.
